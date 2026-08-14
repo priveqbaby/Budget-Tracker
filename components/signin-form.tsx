@@ -23,7 +23,7 @@ export function SigninForm() {
         e.preventDefault();
         if (!email.includes("@")) return;
         startTransition(async () => {
-          setResult(await sendMagicLink(email.trim(), window.location.origin));
+          setResult(await sendMagicLink(email.trim()));
         });
       }}
     >

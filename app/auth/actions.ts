@@ -2,19 +2,25 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getStore, isDemoMode } from "@/lib/data";
 import { DEFAULT_CATEGORIES } from "@/lib/data/default-categories";
 
-export async function sendMagicLink(
-  email: string,
-  origin: string,
-): Promise<{ ok: boolean; message: string }> {
+/** Derived server-side — never trust a caller-supplied origin in an email redirect. */
+async function requestOrigin(): Promise<string> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  return `${proto}://${host}`;
+}
+
+export async function sendMagicLink(email: string): Promise<{ ok: boolean; message: string }> {
   if (isDemoMode()) return { ok: false, message: "Demo mode has no sign-in — the data is seeded." };
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { emailRedirectTo: `${origin}/auth/callback` },
+    options: { emailRedirectTo: `${await requestOrigin()}/auth/callback` },
   });
   if (error) return { ok: false, message: error.message };
   return { ok: true, message: "Check your inbox for the magic link." };
@@ -28,38 +34,23 @@ export async function signOut() {
   redirect("/signin");
 }
 
-/** First-run onboarding: household + membership + the 17 seeded budget lines. */
+/**
+ * First-run onboarding. One security-definer RPC so household, owner
+ * membership, and the 17 seeded lines commit atomically — a plain insert
+ * couldn't even RETURN the household row under RLS (no membership yet).
+ */
 export async function createHousehold(householdName: string, displayName: string) {
   if (isDemoMode()) redirect("/");
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/signin");
 
-  const { data: household, error: hhError } = await supabase
-    .from("households")
-    .insert({ name: householdName })
-    .select("id")
-    .single();
-  if (hhError) throw hhError;
-
-  const { error: memberError } = await supabase.from("household_members").insert({
-    household_id: household.id,
-    user_id: auth.user.id,
-    display_name: displayName,
-    role: "owner",
+  const { error } = await supabase.rpc("create_household_with_categories", {
+    p_name: householdName,
+    p_display_name: displayName,
+    p_categories: DEFAULT_CATEGORIES,
   });
-  if (memberError) throw memberError;
-
-  const { error: catError } = await supabase.from("categories").insert(
-    DEFAULT_CATEGORIES.map((c, i) => ({
-      household_id: household.id,
-      name: c.name,
-      monthly_cap: c.monthlyCap,
-      is_fixed: c.isFixed,
-      sort_order: i,
-    })),
-  );
-  if (catError) throw catError;
+  if (error) throw error;
 
   redirect("/settings");
 }
@@ -87,10 +78,11 @@ export async function acceptInvite(inviteId: string, displayName: string) {
   });
   if (memberError) throw memberError;
 
-  await supabase
+  const { error: acceptError } = await supabase
     .from("invites")
     .update({ accepted_at: new Date().toISOString() })
     .eq("id", inviteId);
+  if (acceptError) throw acceptError;
 
   redirect("/");
 }

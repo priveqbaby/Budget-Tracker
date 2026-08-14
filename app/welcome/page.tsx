@@ -14,17 +14,20 @@ export default async function WelcomePage() {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/signin");
 
-  const { data: membership } = await supabase
+  const { data: membership, error } = await supabase
     .from("household_members")
     .select("household_id")
     .eq("user_id", auth.user.id)
     .limit(1)
     .maybeSingle();
+  if (error) throw error;
   if (membership) redirect("/");
 
+  // RLS scopes this to invites addressed to the signed-in email; the
+  // household name is denormalized on the invite row (see createInvite).
   const { data: invites } = await supabase
     .from("invites")
-    .select("id, household_id, households(name)")
+    .select("id, household_name")
     .is("accepted_at", null);
 
   const email = auth.user.email ?? "";
@@ -40,8 +43,7 @@ export default async function WelcomePage() {
           suggestedName={suggestedName}
           invites={(invites ?? []).map((i) => ({
             id: i.id,
-            householdName:
-              (i.households as unknown as { name: string } | null)?.name ?? "a household",
+            householdName: i.household_name || "a household",
           }))}
         />
       </div>

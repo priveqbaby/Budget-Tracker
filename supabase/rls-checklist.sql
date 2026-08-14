@@ -1,75 +1,98 @@
--- RLS verification (PRD Phase 3/4: attempt cross-household reads).
--- Run in the Supabase SQL editor against a project with the migration applied.
--- Each block simulates a JWT the way PostgREST does; every "expect" comment
--- states the pass condition. Any row leaking across households is a failure.
+-- RLS verification (PRD Phase 3/4: attempt cross-household reads/writes).
+-- Run in the Supabase SQL editor (as postgres/service role) against a project
+-- with the migration applied. Expected-error probes are wrapped in SAVEPOINTs
+-- so one rejection doesn't abort the rest of the run. Every "expect" comment
+-- states the pass condition; any cross-household row leaking is a failure.
 
 begin;
 
--- Two users, two households.
-select gen_random_uuid() as user_a \gset
--- (If \gset is unavailable, substitute literal UUIDs for :'user_a' / :'user_b'.)
-
--- Setup as service role (bypasses RLS):
+-- --------------------------------------------------------------- setup
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-00000000000a', 'a@test.local'),
   ('00000000-0000-0000-0000-00000000000b', 'b@test.local')
 on conflict do nothing;
 
-insert into households (id, name) values
-  ('10000000-0000-0000-0000-000000000001', 'Household A'),
-  ('10000000-0000-0000-0000-000000000002', 'Household B');
-
-insert into household_members (household_id, user_id, display_name, role) values
-  ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-00000000000a', 'A', 'owner'),
-  ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000000b', 'B', 'owner');
-
-insert into categories (id, household_id, name, monthly_cap) values
-  ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'A food', 100000),
-  ('20000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'B food', 100000);
-
--- ---- As user A ------------------------------------------------------------
+-- Bootstrap goes through the security-definer function, as in the app.
 set local role authenticated;
 set local request.jwt.claims =
   '{"sub":"00000000-0000-0000-0000-00000000000a","email":"a@test.local","role":"authenticated"}';
-
--- expect: 1 row (only Household A)
-select count(*) as households_visible from households;
-
--- expect: 1 row (only A's category)
-select count(*) as categories_visible from categories;
-
--- expect: ERROR (new row violates row-level security) — cross-household write
-insert into categories (household_id, name, monthly_cap)
-values ('10000000-0000-0000-0000-000000000002', 'smuggled', 1);
-
--- expect: ERROR — cannot join a household with no invite for a@test.local
-insert into household_members (household_id, user_id, display_name)
-values ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000000a', 'A');
-
--- expect: 0 rows updated — cannot mark B's invites accepted
-update invites set accepted_at = now()
-where household_id = '10000000-0000-0000-0000-000000000002';
-
+select create_household_with_categories(
+  'Household A', 'A', '[{"name":"A food","monthlyCap":100000,"isFixed":false}]'
+) as household_a \gset
 reset role;
 
--- ---- Invite flow ----------------------------------------------------------
--- As B: invite a@test.local, then as A: joining B's household must now succeed.
 set local role authenticated;
 set local request.jwt.claims =
   '{"sub":"00000000-0000-0000-0000-00000000000b","email":"b@test.local","role":"authenticated"}';
-insert into invites (household_id, email, invited_by)
-values ('10000000-0000-0000-0000-000000000002', 'a@test.local',
-        '00000000-0000-0000-0000-00000000000b');
+select create_household_with_categories(
+  'Household B', 'B', '[{"name":"B food","monthlyCap":100000,"isFixed":false}]'
+) as household_b \gset
 reset role;
 
+-- --------------------------------------------------------------- as user A
 set local role authenticated;
 set local request.jwt.claims =
   '{"sub":"00000000-0000-0000-0000-00000000000a","email":"a@test.local","role":"authenticated"}';
--- expect: succeeds (pending invite exists)
+
+-- expect: 1 (only Household A visible)
+select count(*) as households_visible from households;
+
+-- expect: 1 (only A's category visible)
+select count(*) as categories_visible from categories;
+
+-- expect: ERROR — cross-household category write
+savepoint p1;
+insert into categories (household_id, name, monthly_cap)
+values (:'household_b', 'smuggled', 1);
+rollback to savepoint p1;
+
+-- expect: ERROR — joining B's household with no invite for a@test.local
+savepoint p2;
 insert into household_members (household_id, user_id, display_name)
-values ('10000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-00000000000a', 'A');
--- expect: 2 rows now visible
+values (:'household_b', '00000000-0000-0000-0000-00000000000a', 'A');
+rollback to savepoint p2;
+
+reset role;
+
+-- --------------------------------------------------------------- invite flow
+-- As B: invite a@test.local as a member.
+set local role authenticated;
+set local request.jwt.claims =
+  '{"sub":"00000000-0000-0000-0000-00000000000b","email":"b@test.local","role":"authenticated"}';
+insert into invites (household_id, household_name, email, role, invited_by)
+values (:'household_b', 'Household B', 'a@test.local', 'member',
+        '00000000-0000-0000-0000-00000000000b');
+reset role;
+
+-- As A again:
+set local role authenticated;
+set local request.jwt.claims =
+  '{"sub":"00000000-0000-0000-0000-00000000000a","email":"a@test.local","role":"authenticated"}';
+
+-- expect: 1 row, with household_name visible despite not being a member yet
+select household_name from invites where accepted_at is null;
+
+-- expect: ERROR — invite grants 'member'; claiming 'owner' must be rejected
+savepoint p3;
+insert into household_members (household_id, user_id, display_name, role)
+values (:'household_b', '00000000-0000-0000-0000-00000000000a', 'A', 'owner');
+rollback to savepoint p3;
+
+-- expect: ERROR — addressee may only touch accepted_at, not household_id/role
+savepoint p4;
+update invites set role = 'owner' where email = 'a@test.local';
+rollback to savepoint p4;
+
+-- expect: succeeds — role matches the invite
+insert into household_members (household_id, user_id, display_name, role)
+values (:'household_b', '00000000-0000-0000-0000-00000000000a', 'A', 'member');
+
+-- expect: succeeds, 1 row — consuming the invite
+update invites set accepted_at = now() where email = 'a@test.local';
+
+-- expect: 2 (both households visible after joining)
 select count(*) as households_after_join from households;
+
 reset role;
 
 rollback; -- leave no test data behind

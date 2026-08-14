@@ -34,11 +34,12 @@ try the whole flow.
 Live mode is fully wired: magic-link sign-in (`/signin`, session refresh in
 `proxy.ts`), first-run onboarding at `/welcome` (create a household with the 17 seeded
 lines, or accept a pending invite addressed to your email), sign-out, and source
-creation from the import page. Membership bootstrap is enforced by RLS: you can only
-self-insert into a household that is brand new or that has a pending invite for your
-email. Remaining before trusting it with real data: run the RLS checks against a live
-project (`supabase/rls-checklist.sql`) — the policies are written but have only been
-reviewed, not penetration-tested.
+creation from the import page. Household creation is a single `security definer` RPC
+(household + owner membership + seeded categories, atomically); joining any other
+household requires a pending invite for your email, with the role pinned to what the
+invite grants and invite updates column-restricted to `accepted_at`. Remaining before
+trusting it with real data: run `supabase/rls-checklist.sql` against a live project —
+the policies are written and reviewed, not yet penetration-tested for real.
 
 ## How it's put together
 

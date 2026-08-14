@@ -16,14 +16,17 @@ create table household_members (
 );
 
 -- Bridges "invited by email" and "has an auth user": consumed on first sign-in.
+-- household_name is denormalized at creation so the invitee (not yet a member,
+-- so unable to read households under RLS) can still see whom they're joining.
 create table invites (
-  id            uuid primary key default gen_random_uuid(),
-  household_id  uuid not null references households(id) on delete cascade,
-  email         text not null,
-  role          text not null default 'member' check (role in ('owner', 'member')),
-  invited_by    uuid not null references auth.users(id),
-  created_at    timestamptz not null default now(),
-  accepted_at   timestamptz,
+  id             uuid primary key default gen_random_uuid(),
+  household_id   uuid not null references households(id) on delete cascade,
+  household_name text not null default '',
+  email          text not null,
+  role           text not null default 'member' check (role in ('owner', 'member')),
+  invited_by     uuid not null references auth.users(id),
+  created_at     timestamptz not null default now(),
+  accepted_at    timestamptz,
   unique (household_id, email)
 );
 
@@ -128,29 +131,54 @@ $$;
 
 -- Also security definer: called from the household_members insert policy,
 -- where a plain subquery would either recurse or be filtered by RLS itself.
-create or replace function household_has_members(hid uuid)
-returns boolean
+-- Returns the role of the caller's pending invite to hid, or null — so the
+-- policy can check both "an invite exists" and "the claimed role matches it".
+create or replace function pending_invite_role(hid uuid)
+returns text
 language sql
 security definer
 set search_path = public
 stable
 as $$
-  select exists (select 1 from household_members where household_id = hid);
+  select role from invites
+  where household_id = hid
+    and accepted_at is null
+    and lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+  limit 1;
 $$;
 
-create or replace function has_pending_invite(hid uuid)
-returns boolean
-language sql
+-- Household bootstrap is a single security-definer transaction: household,
+-- owner membership, and seeded categories all commit or none do. This is the
+-- only path that creates households, so there is never a member-less
+-- household window for someone to self-insert into.
+create or replace function create_household_with_categories(
+  p_name text,
+  p_display_name text,
+  p_categories jsonb
+) returns uuid
+language plpgsql
 security definer
 set search_path = public
-stable
 as $$
-  select exists (
-    select 1 from invites
-    where household_id = hid
-      and accepted_at is null
-      and lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
-  );
+declare
+  hid uuid;
+  cat jsonb;
+  i int := 0;
+begin
+  if auth.uid() is null then
+    raise exception 'not authenticated';
+  end if;
+  insert into households (name) values (p_name) returning id into hid;
+  insert into household_members (household_id, user_id, display_name, role)
+  values (hid, auth.uid(), p_display_name, 'owner');
+  for cat in select * from jsonb_array_elements(coalesce(p_categories, '[]'::jsonb)) loop
+    insert into categories (household_id, name, monthly_cap, is_fixed, sort_order)
+    values (hid, cat->>'name', (cat->>'monthlyCap')::int,
+            coalesce((cat->>'isFixed')::boolean, false), i);
+    i := i + 1;
+  end loop;
+  return hid;
+end;
 $$;
 
 alter table households        enable row level security;
@@ -164,24 +192,22 @@ alter table transactions      enable row level security;
 alter table merchant_rules    enable row level security;
 alter table fixed_payments    enable row level security;
 
+-- Households are created only through create_household_with_categories
+-- (security definer); no direct-insert policy exists on purpose.
 create policy households_member_all on households
   for all using (is_household_member(id))
   with check (is_household_member(id));
 
--- Anyone authenticated may create a household; membership row is written by
--- the same transaction (see app code).
-create policy households_insert on households
-  for insert with check (auth.uid() is not null);
-
 create policy members_select on household_members
   for select using (is_household_member(household_id));
--- Self-insert is allowed only when bootstrapping a household you just created
--- (no members yet) or accepting a pending invite addressed to your email —
--- never into an arbitrary household.
+-- Self-insert only when accepting a pending invite addressed to your email,
+-- and only with the exact role the invite grants — never into an arbitrary
+-- household, never with an escalated role. (Owner bootstrap goes through the
+-- security-definer creation function, not this policy.)
 create policy members_insert_self on household_members
   for insert with check (
     user_id = auth.uid()
-    and (not household_has_members(household_id) or has_pending_invite(household_id))
+    and role = pending_invite_role(household_id)
   );
 
 -- Invitees can see (and accept) invites addressed to their email.
@@ -193,6 +219,12 @@ create policy invites_addressee_select on invites
 create policy invites_addressee_accept on invites
   for update using (lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')))
   with check (lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
+
+-- An UPDATE may only ever touch accepted_at: without this column grant, an
+-- addressee could rewrite household_id/role on their own invite and turn
+-- pending_invite_role into a door to any household.
+revoke update on invites from authenticated;
+grant update (accepted_at) on invites to authenticated;
 
 create policy categories_member on categories
   for all using (is_household_member(household_id))

@@ -239,9 +239,16 @@ export class SupabaseStore implements DataStore {
 
   async createInvite(email: string): Promise<Invite> {
     const { data: user } = await this.supabase.auth.getUser();
+    // Denormalized so the invitee — not yet a member, so blind to households
+    // under RLS — can still see whom they're joining on /welcome.
+    const { data: hh } = await this.supabase
+      .from("households").select("name").eq("id", this.householdId).single();
     const { data, error } = await this.supabase
       .from("invites")
-      .insert({ ...this.hh(), email, invited_by: user.user?.id })
+      .insert({
+        ...this.hh(), email, invited_by: user.user?.id,
+        household_name: hh?.name ?? "",
+      })
       .select("*").single();
     if (error) throw error;
     return { id: data.id, email: data.email, role: data.role, acceptedAt: data.accepted_at };
@@ -267,9 +274,11 @@ export async function getSupabaseStore(): Promise<DataStore> {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) throw new NotSignedInError();
-  const { data: membership } = await supabase
+  const { data: membership, error } = await supabase
     .from("household_members").select("household_id")
     .eq("user_id", auth.user.id).limit(1).maybeSingle();
+  // A failed query is not "no household" — don't misroute members to onboarding.
+  if (error) throw error;
   if (!membership) throw new NoHouseholdError();
   return new SupabaseStore(supabase, membership.household_id);
 }

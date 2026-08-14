@@ -4,22 +4,8 @@ import "@fontsource-variable/instrument-sans";
 import "@fontsource/spline-sans-mono";
 import "@fontsource/spline-sans-mono/500.css";
 import "./globals.css";
-import Link from "next/link";
-import { Sidebar } from "@/components/sidebar";
+import { MobileTopBar, Sidebar } from "@/components/sidebar";
 import { isDemoMode } from "@/lib/data";
-
-function MobileTopBar() {
-  return (
-    <div className="flex items-center justify-between border-b border-hairline px-5 py-3.5 md:hidden">
-      <span className="font-display text-[19px] font-semibold text-ink">Hearth</span>
-      <nav className="flex gap-4 text-[13.5px] font-semibold text-ink-secondary">
-        <Link href="/">This month</Link>
-        <Link href="/import">Import</Link>
-        <Link href="/settings">Settings</Link>
-      </nav>
-    </div>
-  );
-}
 
 export const metadata: Metadata = {
   title: "Hearth — household ledger",

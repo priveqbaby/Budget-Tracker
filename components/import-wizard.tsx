@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -34,6 +34,13 @@ export function ImportWizard({ sources, categories }: { sources: SourceDto[]; ca
   const [state, setState] = useState<Step>({ step: "pick" });
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // A just-created first source (router.refresh) becomes selected automatically.
+  useEffect(() => {
+    if (sources.length > 0 && !sources.some((s) => s.id === sourceId)) {
+      setSourceId(sources[0].id);
+    }
+  }, [sources, sourceId]);
 
   const source = sources.find((s) => s.id === sourceId);
 
