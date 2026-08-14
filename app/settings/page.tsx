@@ -1,0 +1,106 @@
+import { getStore } from "@/lib/data";
+import { formatCentsWhole } from "@/lib/money";
+import { CapEditor } from "@/components/cap-editor";
+import { InviteForm } from "@/components/invite-form";
+
+export default async function SettingsPage() {
+  const store = await getStore();
+  const [household, categories, sources, invites] = await Promise.all([
+    store.getHousehold(),
+    store.listCategories(),
+    store.listSources(),
+    store.listInvites(),
+  ]);
+
+  const variable = categories.filter((c) => !c.isFixed);
+  const fixed = categories.filter((c) => c.isFixed);
+  const totalCap = categories.reduce((s, c) => s + c.monthlyCap, 0);
+
+  return (
+    <div className="mx-auto max-w-[760px]">
+      <header className="settle">
+        <div className="overline">{household.name}</div>
+        <h1 className="font-display mt-1 text-[34px] font-semibold leading-tight text-ink">
+          Settings
+        </h1>
+        <p className="mt-2 text-[14px] text-ink-secondary">
+          The plan: {formatCentsWhole(totalCap)} a month across {categories.length} lines.
+          Cap changes apply from this month forward — history keeps the caps it was measured
+          against.
+        </p>
+      </header>
+
+      <section className="settle settle-1 mt-7">
+        <h2 className="overline mb-2.5 px-1">Budget lines</h2>
+        <div className="card overflow-hidden">
+          <div className="border-b border-hairline bg-sunken/60 px-5 py-2 text-[11.5px] font-semibold uppercase tracking-wider text-ink-muted">
+            Fixed — checklist, not matched to transactions
+          </div>
+          {fixed.map((c) => (
+            <CapEditor key={c.id} id={c.id} name={c.name} capCents={c.monthlyCap} />
+          ))}
+          <div className="border-y border-hairline bg-sunken/60 px-5 py-2 text-[11.5px] font-semibold uppercase tracking-wider text-ink-muted">
+            Variable — tracked against statement imports
+          </div>
+          {variable.map((c) => (
+            <CapEditor key={c.id} id={c.id} name={c.name} capCents={c.monthlyCap} />
+          ))}
+        </div>
+        <p className="mt-2.5 px-1 text-[12px] text-ink-muted">
+          Open question 4 from the PRD still stands: check whether Travel — general
+          double-counts Travel — Manitoba before trusting the seeded caps.
+        </p>
+      </section>
+
+      <div className="mt-9 grid gap-8 md:grid-cols-2">
+        <section className="settle settle-2">
+          <h2 className="overline mb-2.5 px-1">Household</h2>
+          <div className="card divide-y divide-hairline overflow-hidden">
+            {household.members.map((m) => (
+              <div key={m.id} className="flex items-center gap-3 px-5 py-3">
+                <span
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold text-white"
+                  style={{ background: m.id === "leon" ? "#a85a32" : "#56698f" }}
+                >
+                  {m.displayName[0]}
+                </span>
+                <span className="flex-1 text-[14px] font-medium text-ink">{m.displayName}</span>
+                <span className="text-[12px] text-ink-muted">{m.role}</span>
+              </div>
+            ))}
+            {invites
+              .filter((i) => !i.acceptedAt)
+              .map((i) => (
+                <div key={i.id} className="flex items-center gap-3 px-5 py-3">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-hairline-deep text-[12px] font-bold text-ink-muted">
+                    ?
+                  </span>
+                  <span className="flex-1 truncate text-[14px] text-ink-secondary">{i.email}</span>
+                  <span className="chip chip-neutral !text-[11px]">invited</span>
+                </div>
+              ))}
+          </div>
+          <div className="mt-3">
+            <InviteForm />
+          </div>
+        </section>
+
+        <section className="settle settle-3">
+          <h2 className="overline mb-2.5 px-1">Statement sources</h2>
+          <div className="card divide-y divide-hairline overflow-hidden">
+            {sources.map((s) => (
+              <div key={s.id} className="px-5 py-3">
+                <div className="text-[14px] font-medium text-ink">{s.label}</div>
+                <div className="mt-0.5 text-[12px] text-ink-muted">
+                  {s.columnMapping
+                    ? `columns remembered · ${s.columnMapping.sign === "charges_positive" ? "charges positive" : "debits negative"}`
+                    : "mapping will be learned on first import"}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}

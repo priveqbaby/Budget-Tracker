@@ -27,6 +27,7 @@ const HEURISTICS: Array<{ pattern: RegExp; category: RegExp }> = [
   { pattern: /PHARMAPRIX|JEAN COUTU|UNIPRIX|PHARMACIE|CLINIQUE|DENTAIRE/i, category: /health|pharma/i },
   { pattern: /AIR CANADA|PORTER|WESTJET|AIRBNB|HOTEL|EXPEDIA|FLAIR/i, category: /travel/i },
   { pattern: /SAQ|LCBO|DEPANNEUR/i, category: /alcohol|grocer|food/i },
+  { pattern: /BOULANGERIE|PATISSERIE|FROMAGERIE|BOUCHERIE|POISSONNERIE/i, category: /grocer|food/i },
   { pattern: /AMAZON|AMZN|WALMART|CANADIAN TIRE|IKEA|DOLLARAMA|HOME DEPOT|RONA|BUREAU EN GROS/i, category: /household|home|shopping/i },
   { pattern: /SIMONS|WINNERS|UNIQLO|ZARA|H&M|SPORT/i, category: /cloth|shopping|personal/i },
   { pattern: /GYM|ECONOFITNESS|NAUTILUS|YMCA|CLIMBING|BLOC/i, category: /fitness|health|personal/i },

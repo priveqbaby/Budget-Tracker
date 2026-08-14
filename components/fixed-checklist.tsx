@@ -1,0 +1,59 @@
+"use client";
+
+import { useOptimistic, useTransition } from "react";
+import { formatCentsWhole } from "@/lib/money";
+import { toggleFixedPaid } from "@/app/actions";
+
+export interface FixedItemDto {
+  categoryId: string;
+  name: string;
+  amount: number;
+  isPaid: boolean;
+}
+
+export function FixedChecklist({ items, month }: { items: FixedItemDto[]; month: string }) {
+  const [, startTransition] = useTransition();
+  const [optimistic, setOptimistic] = useOptimistic(items);
+
+  return (
+    <ul>
+      {optimistic.map((item) => (
+        <li key={item.categoryId} className="border-b border-hairline last:border-b-0">
+          <label className="flex cursor-pointer items-center gap-3 px-5 py-3 transition-colors hover:bg-[rgba(58,46,29,0.03)]">
+            <input
+              type="checkbox"
+              checked={item.isPaid}
+              onChange={(e) => {
+                const isPaid = e.target.checked;
+                startTransition(async () => {
+                  setOptimistic((prev) =>
+                    prev.map((p) => (p.categoryId === item.categoryId ? { ...p, isPaid } : p)),
+                  );
+                  await toggleFixedPaid(item.categoryId, month, isPaid);
+                });
+              }}
+              className="h-[17px] w-[17px] accent-[var(--color-ok)]"
+            />
+            <span
+              className={`flex-1 text-[14px] font-medium ${
+                item.isPaid ? "text-ink-muted line-through decoration-hairline-deep" : "text-ink"
+              }`}
+            >
+              {item.name}
+            </span>
+            <span className="money text-[13.5px] text-ink-secondary">
+              {formatCentsWhole(item.amount)}
+            </span>
+            <span
+              className={`w-[52px] text-right text-[11.5px] font-semibold ${
+                item.isPaid ? "text-ok" : "text-ink-muted"
+              }`}
+            >
+              {item.isPaid ? "paid" : "due"}
+            </span>
+          </label>
+        </li>
+      ))}
+    </ul>
+  );
+}

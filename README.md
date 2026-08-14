@@ -1,8 +1,64 @@
-# Budget Tracker
+# Hearth — household budget tracker
 
-Household budget tracker for spend split across multiple cards for rewards — the case no single provider dashboard can see.
+Spend is deliberately split across cards for rewards, so no single provider dashboard can
+see all of it. Hearth is the answer: export a CSV from each card, drop it in, and know in
+five seconds whether the month is on track.
 
-**Status: PRD under review, not yet approved to build.**
+Built to the [PRD](docs/PRD.md) (v1.1, amended per [review](docs/PRD-REVIEW.md)).
 
-- [Product requirements](docs/PRD.md)
-- [PRD review](docs/PRD-REVIEW.md)
+![Dashboard](docs/screens/dashboard.png)
+
+## Run it
+
+```bash
+npm install
+npm run dev       # http://localhost:3000 — demo mode with seeded data
+npm test          # import-engine fixture tests
+npm run build     # production build
+```
+
+With no Supabase env vars the app runs in **demo mode**: an in-memory store seeded with
+three months of realistic Montreal data, so every flow — dashboard, import wizard,
+settings — works out of the box. The import page has a bundled sample Amex export to
+try the whole flow.
+
+## Going live
+
+1. Create a Supabase project and run `supabase/migrations/0001_init.sql` (tables, RLS
+   via a `security definer` membership function, cap-snapshot trigger).
+2. Copy `.env.example` to `.env.local` and fill in `NEXT_PUBLIC_SUPABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and (optional) `ANTHROPIC_API_KEY` — without the
+   Anthropic key, first-pass categorization falls back to a local heuristic dictionary.
+3. Deploy to Vercel.
+
+Still to wire for live mode (Phase 3/4 of the build plan): the magic-link sign-in
+UI/middleware, first-run household + category seeding, invite acceptance on first
+login, and an RLS penetration check against a real project. The data layer
+(`lib/data/supabase.ts`) already implements the full store interface against the schema.
+
+## How it's put together
+
+| Piece | Where | Notes |
+|---|---|---|
+| Import engine | `lib/import/` | Pure TypeScript, no I/O. Parsing, sign canonicalization, merchant normalization, count-aware dedup, exact-match rules. 17 fixture tests. |
+| Claude categorization | `lib/import/categorize.ts` | One batched Haiku call per import, server-side; merchant strings only, never amounts. |
+| Data access | `lib/data/` | One interface, two stores: seeded in-memory demo and Supabase. |
+| Budget math | `lib/budget.ts` | Color = proximity to cap; pace is a separate text flag needing ≥3 transactions so early bills stay quiet. |
+| Schema | `supabase/migrations/` | Amended data model: `month_caps` snapshots, `invites`, canonical sign convention, instrumentation counts. |
+
+Import review — unknown merchants are decided once, then remembered as rules:
+
+![Import review](docs/screens/import-review.png)
+
+Category detail — per-person split, refunds, and unreviewed transactions inline:
+
+![Category detail](docs/screens/category-detail.png)
+
+## Conventions that matter
+
+- **Money is integer cents.** Spend positive, credits negative, canonicalized at import.
+- **Dedup is count-aware.** Two identical same-day coffees are two transactions;
+  re-uploading an overlapping statement double-counts nothing.
+- **Card payments are excluded from spend** by default (override at review); refunds
+  count as negative spend in their category.
+- **Cap edits never rewrite history** — each month keeps the caps it was measured against.
