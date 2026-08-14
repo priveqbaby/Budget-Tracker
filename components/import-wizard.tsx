@@ -2,10 +2,12 @@
 
 import { useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   commitImport, previewImport, probeCsv,
   type CommitRowDto, type ImportPreviewDto, type MappingProbe,
 } from "@/app/actions";
+import { addSource } from "@/app/auth/actions";
 import type { ColumnMapping, SignConvention } from "@/lib/import/types";
 import { formatCents, dayLabel } from "@/lib/money";
 
@@ -36,6 +38,10 @@ export function ImportWizard({ sources, categories }: { sources: SourceDto[]; ca
   const source = sources.find((s) => s.id === sourceId);
 
   const begin = (name: string, text: string) => {
+    if (!sourceId) {
+      setError("Add a source first — whose card is this statement from?");
+      return;
+    }
     setFilename(name);
     setCsvText(text);
     setError(null);
@@ -189,6 +195,7 @@ function PickStep({
             )}
           </button>
         ))}
+        <NewSourceButton empty={sources.length === 0} />
       </div>
 
       <div
@@ -243,6 +250,52 @@ function PickStep({
         </button>
       </div>
     </div>
+  );
+}
+
+function NewSourceButton({ empty }: { empty: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [label, setLabel] = useState("");
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="rounded-[10px] border border-dashed border-hairline-deep px-4 py-2.5 text-[13.5px] font-semibold text-ink-muted transition-colors hover:border-ink-muted hover:text-ink"
+      >
+        {empty ? "Add your first card or account" : "+ New source"}
+      </button>
+    );
+  }
+  return (
+    <form
+      className="flex items-center gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!label.trim()) return;
+        startTransition(async () => {
+          await addSource(label);
+          setLabel("");
+          setOpen(false);
+          router.refresh();
+        });
+      }}
+    >
+      <input
+        autoFocus
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
+        placeholder="e.g. Leon — Amex Cobalt"
+        className="field !w-[220px]"
+        aria-label="Source label"
+      />
+      <button type="submit" className="btn btn-ghost" disabled={pending || !label.trim()}>
+        {pending ? "…" : "Add"}
+      </button>
+    </form>
   );
 }
 

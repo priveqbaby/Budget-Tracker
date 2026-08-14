@@ -186,4 +186,16 @@ export class DemoStore implements DataStore {
     d.invites.push(invite);
     return invite;
   }
+
+  async createSource(label: string): Promise<Source> {
+    const d = db();
+    const source: Source = {
+      id: `src-${++d.counter}`,
+      ownerMemberId: members[0].id,
+      label,
+      columnMapping: null,
+    };
+    d.sources.push(source);
+    return source;
+  }
 }

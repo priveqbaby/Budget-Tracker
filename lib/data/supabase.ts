@@ -1,6 +1,5 @@
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
 import type { ColumnMapping } from "@/lib/import/types";
 import type { DataStore } from "./store";
 import type {
@@ -8,27 +7,8 @@ import type {
   MonthCap, MonthData, Source, StoredRule, Transaction,
 } from "./types";
 
-async function createClient(): Promise<SupabaseClient> {
-  const cookieStore = await cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: (cookiesToSet) => {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            );
-          } catch {
-            // Called from a Server Component: middleware refreshes sessions instead.
-          }
-        },
-      },
-    },
-  );
-}
+export class NotSignedInError extends Error {}
+export class NoHouseholdError extends Error {}
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const txnFromRow = (r: any): Transaction => ({
@@ -266,16 +246,30 @@ export class SupabaseStore implements DataStore {
     if (error) throw error;
     return { id: data.id, email: data.email, role: data.role, acceptedAt: data.accepted_at };
   }
+
+  async createSource(label: string): Promise<Source> {
+    const { data: auth } = await this.supabase.auth.getUser();
+    if (!auth.user) throw new NotSignedInError();
+    const { data, error } = await this.supabase
+      .from("sources")
+      .insert({ ...this.hh(), owner_member_id: auth.user.id, label })
+      .select("*").single();
+    if (error) throw error;
+    return {
+      id: data.id, ownerMemberId: data.owner_member_id, label: data.label,
+      columnMapping: data.column_mapping,
+    };
+  }
 }
 
-/** Resolves the signed-in user's household; throws if unauthenticated. */
+/** Resolves the signed-in user's household; throws typed errors if not ready. */
 export async function getSupabaseStore(): Promise<DataStore> {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) throw new Error("Not signed in");
-  const { data: membership, error } = await supabase
+  if (!auth.user) throw new NotSignedInError();
+  const { data: membership } = await supabase
     .from("household_members").select("household_id")
-    .eq("user_id", auth.user.id).limit(1).single();
-  if (error) throw new Error("No household for this user yet");
+    .eq("user_id", auth.user.id).limit(1).maybeSingle();
+  if (!membership) throw new NoHouseholdError();
   return new SupabaseStore(supabase, membership.household_id);
 }

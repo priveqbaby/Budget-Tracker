@@ -126,6 +126,33 @@ as $$
   );
 $$;
 
+-- Also security definer: called from the household_members insert policy,
+-- where a plain subquery would either recurse or be filtered by RLS itself.
+create or replace function household_has_members(hid uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (select 1 from household_members where household_id = hid);
+$$;
+
+create or replace function has_pending_invite(hid uuid)
+returns boolean
+language sql
+security definer
+set search_path = public
+stable
+as $$
+  select exists (
+    select 1 from invites
+    where household_id = hid
+      and accepted_at is null
+      and lower(email) = lower(coalesce(auth.jwt() ->> 'email', ''))
+  );
+$$;
+
 alter table households        enable row level security;
 alter table household_members enable row level security;
 alter table invites           enable row level security;
@@ -148,8 +175,14 @@ create policy households_insert on households
 
 create policy members_select on household_members
   for select using (is_household_member(household_id));
+-- Self-insert is allowed only when bootstrapping a household you just created
+-- (no members yet) or accepting a pending invite addressed to your email —
+-- never into an arbitrary household.
 create policy members_insert_self on household_members
-  for insert with check (user_id = auth.uid());
+  for insert with check (
+    user_id = auth.uid()
+    and (not household_has_members(household_id) or has_pending_invite(household_id))
+  );
 
 -- Invitees can see (and accept) invites addressed to their email.
 create policy invites_member on invites
@@ -158,7 +191,8 @@ create policy invites_member on invites
 create policy invites_addressee_select on invites
   for select using (lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
 create policy invites_addressee_accept on invites
-  for update using (lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
+  for update using (lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')))
+  with check (lower(email) = lower(coalesce(auth.jwt() ->> 'email', '')));
 
 create policy categories_member on categories
   for all using (is_household_member(household_id))

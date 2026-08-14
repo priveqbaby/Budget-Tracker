@@ -47,4 +47,5 @@ export interface DataStore {
   ): Promise<void>;
   setTransactionCategory(id: string, categoryId: string): Promise<Transaction>;
   createInvite(email: string): Promise<Invite>;
+  createSource(label: string): Promise<Source>;
 }

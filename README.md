@@ -31,10 +31,14 @@ try the whole flow.
    Anthropic key, first-pass categorization falls back to a local heuristic dictionary.
 3. Deploy to Vercel.
 
-Still to wire for live mode (Phase 3/4 of the build plan): the magic-link sign-in
-UI/middleware, first-run household + category seeding, invite acceptance on first
-login, and an RLS penetration check against a real project. The data layer
-(`lib/data/supabase.ts`) already implements the full store interface against the schema.
+Live mode is fully wired: magic-link sign-in (`/signin`, session refresh in
+`proxy.ts`), first-run onboarding at `/welcome` (create a household with the 17 seeded
+lines, or accept a pending invite addressed to your email), sign-out, and source
+creation from the import page. Membership bootstrap is enforced by RLS: you can only
+self-insert into a household that is brand new or that has a pending invite for your
+email. Remaining before trusting it with real data: run the RLS checks against a live
+project (`supabase/rls-checklist.sql`) — the policies are written but have only been
+reviewed, not penetration-tested.
 
 ## How it's put together
 
