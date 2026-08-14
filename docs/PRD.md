@@ -1,7 +1,7 @@
 # PRD: Household budget tracker
 
 **Owner:** Leon
-**Status:** Draft for review, not approved to build
+**Status:** v1.1 — Approved to build, amended per [PRD review](PRD-REVIEW.md)
 **Last updated:** August 14, 2026
 
 ---
@@ -56,6 +56,19 @@ Settled during requirements interview:
 | Fixed vs variable | Rent, debt, parent transfer treated as a paid/unpaid checklist | They are not itemized purchases, matching them is wasted effort |
 | History | Retained indefinitely, month selector | Explicitly requested, June vs July vs August |
 | Tone | Informative, not punitive | Awareness to enable adjustment, not guilt |
+
+Amended after review:
+
+| Decision | Choice | Why |
+|---|---|---|
+| Split transactions | One transaction, one category in v1 | A Costco receipt spanning groceries and household goods is assigned whole; per-line splitting is a v2 data-model change |
+| Month attribution | Transaction date (not posting date), calendar-month buckets | Consistent bucketing is what makes overlap dedup on re-upload work |
+| Shared card | Assign to cardholder, with per-transaction owner reassignment | Person-attribution already keys off whose upload it was; splitting reintroduces manual bookkeeping (resolves open question 2) |
+| Over-budget vs surplus | Manual decision, never automatic | Auto-drawdown hides drift, which defeats goal 4 (resolves open question 3) |
+| Merchant rule semantics | Exact match on the normalized merchant string | Substring/regex rules invite one bad rule swallowing a statement; normalization strips store numbers, cities, processor prefixes (`SQ *`, `TST*`) |
+| Sign convention | Spend positive, credits negative, canonical at import | Issuers disagree (Amex: charges positive; bank exports: debits negative); per-source flag stored in `sources.column_mapping` |
+| Card payments | Excluded by default, manual override | "PAYMENT RECEIVED - THANK YOU" is not spend; refunds stay, as negative spend in their category |
+| Claude assignments | Arrive unconfirmed, one batched call per import | User review flips `is_confirmed`; never one API call per merchant |
 
 ## 6. User flows
 
@@ -118,19 +131,29 @@ The shipped app talks to Supabase and Anthropic over normal HTTPS APIs. No MCP a
 ```
 households        id, name, created_at
 household_members household_id, user_id, display_name, role
+invites           id, household_id, email, role, invited_by, accepted_at
 categories        id, household_id, name, monthly_cap, is_fixed, sort_order
+month_caps        id, household_id, category_id, month, cap
 sources           id, household_id, owner_member_id, label, column_mapping (jsonb)
 transactions      id, household_id, source_id, owner_member_id, date,
-                  description, merchant_normalized, amount, category_id,
-                  is_confirmed, import_batch_id
-merchant_rules    id, household_id, merchant_pattern, category_id, hit_count
+                  description, merchant_normalized, amount, currency,
+                  kind (spend|refund|payment), is_excluded, category_id,
+                  is_confirmed, dedup_hash, import_batch_id
+merchant_rules    id, household_id, merchant_normalized, category_id, hit_count
 fixed_payments    id, household_id, category_id, month, is_paid, amount
-import_batches    id, household_id, source_id, filename, row_count, created_at
+import_batches    id, household_id, source_id, filename, row_count,
+                  auto_categorized_count, manual_count, created_at
 ```
 
-`merchant_rules` is what makes month three faster than month one. Every manual categorization writes a rule; every future import checks rules before asking.
+`merchant_rules` is what makes month three faster than month one. Every manual categorization writes a rule; every future import checks rules before asking. A rule is an exact match on the normalized merchant string.
 
-Deduplication: hash of date, amount, and normalized description per source. Re-uploading an overlapping statement should not double-count.
+`month_caps` keeps history honest: the first time a month receives data, each category's current cap is snapshotted into it. Changing the food cap in October does not rewrite what June was measured against.
+
+`invites` bridges the gap between "Sara was invited by email" and "Sara has an auth user": a pending invite is consumed on her first sign-in.
+
+`currency` defaults to `CAD`; Amex shows foreign spend in CAD so v1 ignores conversion, but the column exists now because adding it later would touch every dedup hash.
+
+Deduplication is **count-aware**, per source: the hash is (date, amount, normalized description), but instead of dropping any row whose hash already exists, the import compares the occurrence count of each hash in the incoming file against the count already stored for that source, and inserts only the difference. Two identical same-day coffees import as two transactions; re-uploading an overlapping statement double-counts nothing.
 
 ## 9. Build plan
 
@@ -178,16 +201,16 @@ Each phase commits at a logical checkpoint. Anthropic's guidance is to run `/cle
 This holds real transaction data for two people, and eventually other people.
 
 - No bank credentials stored, ever. CSV upload sidesteps this entirely at launch. Plaid tokens, if added, are stored server-side only.
-- RLS on every table, keyed to `household_id`. No API route trusts a client-supplied household ID.
+- RLS on every table, keyed to `household_id`. No API route trusts a client-supplied household ID. Membership checks go through a `security definer` function (`is_household_member`) so the `household_members` policy does not recurse into itself — the standard Supabase multi-tenant pitfall.
 - Anthropic API key server-side only, never in the browser bundle.
 - Merchant strings sent to Claude for categorization are the only data leaving our infrastructure. Amounts are not sent, since the merchant name alone is enough to classify.
 
 ## 11. Open questions
 
-1. Do the Amex Cobalt and Wealthsimple CSV exports include a stable merchant field, or does the description need heavy normalization? Needs an actual export to answer.
-2. When a card is shared, do we split the transaction or assign it to the cardholder?
-3. Should over-budget in one category be allowed to draw from the $519 surplus automatically, or stay a manual decision?
-4. Is the $666 general travel line double-counting the $167 Manitoba line? This affects the seeded budget.
+1. Do the Amex Cobalt and Wealthsimple CSV exports include a stable merchant field, or does the description need heavy normalization? **Partially resolved:** Amex Canada's basic CSV embeds merchant, store number, and city in one description string — heavy normalization is required and is built. Fixture CSVs are synthetic until a real export replaces them; the column-mapping step absorbs format differences.
+2. ~~When a card is shared, do we split the transaction or assign it to the cardholder?~~ **Resolved:** assign to cardholder (see amended scope decisions).
+3. ~~Should over-budget draw from the surplus automatically?~~ **Resolved:** manual, always (see amended scope decisions).
+4. Is the $666 general travel line double-counting the $167 Manitoba line? **Still open** — needs the Sankey numbers. Does not block the build; seeded caps are editable. It blocks trusting the first month's dashboard.
 
 ## 12. Out of scope for v1, tracked for later
 

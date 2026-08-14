@@ -1,0 +1,35 @@
+{
+  "name": "budget-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "latest",
+    "@fontsource-variable/fraunces": "latest",
+    "@fontsource-variable/instrument-sans": "latest",
+    "@fontsource/spline-sans-mono": "latest",
+    "@supabase/ssr": "latest",
+    "@supabase/supabase-js": "latest",
+    "next": "latest",
+    "papaparse": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "recharts": "latest"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "latest",
+    "@types/node": "^22",
+    "@types/papaparse": "latest",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "latest",
+    "typescript": "^5",
+    "vitest": "latest"
+  }
+}
