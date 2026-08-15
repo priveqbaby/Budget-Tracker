@@ -1,4 +1,5 @@
-import type { Category, MonthData, Transaction } from "@/lib/data/types";
+import type { Category, IncomeEntry, MonthData, Transaction } from "@/lib/data/types";
+import { incomeForMonth } from "@/lib/data/store";
 
 export type BudgetStatus = "ok" | "watch" | "over";
 
@@ -28,8 +29,33 @@ export interface MonthSummary {
   }>;
   totalVariableSpent: number;
   totalVariableCap: number;
-  /** The unallocated-surplus line, if the plan has one (PRD v2 §2.3). */
-  surplus: { cap: number; drawn: number; left: number } | null;
+  /**
+   * The unallocated-surplus line (PRD v2 §2.3). `cap` is what is actually
+   * available this month — derived from recorded income when there is any,
+   * otherwise the plan's figure (PRD v3 §2.2).
+   */
+  surplus: {
+    cap: number;
+    drawn: number;
+    left: number;
+    isDerived: boolean;
+    planned: number;
+  } | null;
+  /**
+   * Recorded income and the surplus it implies (PRD v3). `isPlanned` means no
+   * income was recorded for this month, so `surplus` fell back to the plan's
+   * figure rather than reporting a misleading shortfall.
+   */
+  income: {
+    total: number;
+    byMember: Record<string, number>;
+    entries: IncomeEntry[];
+    allocated: number;
+    plannedSurplus: number;
+    actualSurplus: number;
+    isPlanned: boolean;
+    savingsTarget: number;
+  };
   uncategorized: Transaction[];
   unconfirmedCount: number;
   overCount: number;
@@ -46,6 +72,7 @@ export function summarizeMonth(
   data: MonthData,
   categories: Category[],
   todayIso: string,
+  options: { incomeEntries?: IncomeEntry[]; savingsTarget?: number } = {},
 ): MonthSummary {
   const days = daysInMonth(data.month);
   const today = todayIso.slice(0, 7);
@@ -121,9 +148,52 @@ export function summarizeMonth(
     (s, v) => s + (v.cap > 0 ? Math.max(0, v.spent - v.cap) : 0),
     0,
   );
+  // Overages draw against whatever surplus actually exists this month, not the
+  // planning constant — so a tax-return month can genuinely absorb more.
+  const monthIncomeEntries = incomeForMonth(options.incomeEntries ?? [], data.month);
+  const recordedIncome = monthIncomeEntries.reduce((s, e) => s + e.amount, 0);
+  const allocatedForSurplus = categories
+    .filter((c) => !c.isSurplus)
+    .reduce((s, c) => s + capOf(c), 0);
+  const availableSurplus =
+    monthIncomeEntries.length > 0 ? recordedIncome - allocatedForSurplus : surplusCap;
   const surplus = surplusCategory
-    ? { cap: surplusCap, drawn, left: surplusCap - drawn }
+    ? {
+        cap: availableSurplus,
+        drawn,
+        left: availableSurplus - drawn,
+        isDerived: monthIncomeEntries.length > 0,
+        planned: surplusCap,
+      }
     : null;
+
+  // --- Income and derived surplus (PRD v3) -------------------------------
+  const monthIncome = incomeForMonth(options.incomeEntries ?? [], data.month);
+  const incomeTotal = monthIncome.reduce((s, e) => s + e.amount, 0);
+  const incomeByMember: Record<string, number> = {};
+  for (const e of monthIncome) {
+    const key = e.memberId ?? "household";
+    incomeByMember[key] = (incomeByMember[key] ?? 0) + e.amount;
+  }
+  // Everything the plan spoken for, excluding the surplus line itself.
+  const allocated =
+    categories
+      .filter((c) => !c.isSurplus)
+      .reduce((s, c) => s + capOf(c), 0);
+  const plannedSurplus = surplusCap;
+  const hasIncome = monthIncome.length > 0;
+  const income = {
+    total: incomeTotal,
+    byMember: incomeByMember,
+    entries: monthIncome,
+    allocated,
+    plannedSurplus,
+    // With nothing recorded, reporting income − allocated would show a huge
+    // fake shortfall; fall back to the plan and label it.
+    actualSurplus: hasIncome ? incomeTotal - allocated : plannedSurplus,
+    isPlanned: !hasIncome,
+    savingsTarget: options.savingsTarget ?? 0,
+  };
 
   const unconfirmedCount = countable.filter((t) => !t.isConfirmed).length;
 
@@ -161,6 +231,7 @@ export function summarizeMonth(
     totalVariableSpent,
     totalVariableCap,
     surplus,
+    income,
     uncategorized,
     unconfirmedCount,
     overCount,

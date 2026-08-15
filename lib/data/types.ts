@@ -10,6 +10,28 @@ export interface Household {
   id: string;
   name: string;
   members: Member[];
+  /** Monthly savings intent, cents. Measured against actual surplus, never enforced. */
+  savingsTarget: number;
+}
+
+export type IncomeKind =
+  | "contribution"
+  | "salary"
+  | "trading"
+  | "side_hustle"
+  | "tax_return"
+  | "gift"
+  | "other";
+
+export interface IncomeEntry {
+  id: string;
+  memberId: string | null;
+  label: string;
+  kind: IncomeKind;
+  amount: number; // cents, positive
+  /** Recurring entries apply to every month and carry no month of their own. */
+  isRecurring: boolean;
+  month: string | null; // YYYY-MM for one-offs
 }
 
 export interface Category {

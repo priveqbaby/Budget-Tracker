@@ -7,6 +7,7 @@ import { CategoryRows, type CategoryRowDto, type TxnDto } from "@/components/cat
 import { FixedChecklist } from "@/components/fixed-checklist";
 import { HistoryChart, type HistoryPointDto } from "@/components/history-chart";
 import { SurplusStrip } from "@/components/surplus-strip";
+import { IncomeStrip } from "@/components/income-strip";
 import { MonthJournal } from "@/components/month-journal";
 import { UncategorizedRow } from "@/components/uncategorized-row";
 
@@ -19,10 +20,11 @@ export default async function Dashboard({
   const store = await getStore();
   const todayIso = isDemoMode() ? DEMO_TODAY : new Date().toISOString().slice(0, 10);
 
-  const [household, categories, months] = await Promise.all([
+  const [household, categories, months, incomeEntries] = await Promise.all([
     store.getHousehold(),
     store.listCategories(),
     store.listMonths(),
+    store.listIncomeEntries(),
   ]);
 
   const month = m && /^\d{4}-\d{2}$/.test(m) ? m : (months[months.length - 1] ?? todayIso.slice(0, 7));
@@ -31,7 +33,10 @@ export default async function Dashboard({
   const next = monthIndex >= 0 && monthIndex < months.length - 1 ? months[monthIndex + 1] : null;
 
   const data = await store.getMonthData(month);
-  const s = summarizeMonth(data, categories, todayIso);
+  const s = summarizeMonth(data, categories, todayIso, {
+    incomeEntries,
+    savingsTarget: household.savingsTarget,
+  });
   const note = await store.getMonthNote(month);
   const surplusCategory = categories.find((c) => c.isSurplus);
 
@@ -40,7 +45,10 @@ export default async function Dashboard({
   const foodByMonth = new Map<string, number>();
   for (const hm of months) {
     const hd = hm === month ? data : await store.getMonthData(hm);
-    const hs = summarizeMonth(hd, categories, todayIso);
+    const hs = summarizeMonth(hd, categories, todayIso, {
+      incomeEntries,
+      savingsTarget: household.savingsTarget,
+    });
     history.push({
       month: hm,
       spent: hs.totalVariableSpent,
@@ -179,12 +187,20 @@ export default async function Dashboard({
         </div>
       </section>
 
+      <IncomeStrip
+        income={s.income}
+        members={household.members.map((m) => ({ id: m.id, displayName: m.displayName }))}
+        surplusName={surplusCategory?.name ?? "surplus"}
+      />
+
       {s.surplus && surplusCategory && (
         <SurplusStrip
           name={surplusCategory.name}
           cap={s.surplus.cap}
           drawn={s.surplus.drawn}
           left={s.surplus.left}
+          isDerived={s.surplus.isDerived}
+          planned={s.surplus.planned}
         />
       )}
 

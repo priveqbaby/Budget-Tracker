@@ -4,9 +4,12 @@ import type { ColumnMapping } from "@/lib/import/types";
 import type { DataStore } from "./store";
 import type {
   Category, CommitRow, FixedPayment, Household, ImportBatchMeta, Invite,
-  MonthCap, MonthData, MonthNote, Source, SourceKind, StoredRule, Transaction,
+  IncomeEntry, MonthCap, MonthData, MonthNote, Source, SourceKind, StoredRule, Transaction,
 } from "./types";
-import { buildSeed, categories as seedCategories, members, sources as seedSources } from "./demo-seed";
+import {
+  buildSeed, categories as seedCategories, members, sources as seedSources,
+  DEMO_SAVINGS_TARGET,
+} from "./demo-seed";
 
 interface DemoDb {
   categories: Category[];
@@ -18,6 +21,8 @@ interface DemoDb {
   importBatches: ImportBatchMeta[];
   invites: Invite[];
   monthNotes: MonthNote[];
+  incomeEntries: IncomeEntry[];
+  savingsTarget: number;
   counter: number;
 }
 
@@ -31,6 +36,7 @@ function db(): DemoDb {
       categories: structuredClone(seedCategories),
       sources: structuredClone(seedSources),
       ...seed,
+      savingsTarget: DEMO_SAVINGS_TARGET,
       counter: 10000,
     };
   }
@@ -39,7 +45,7 @@ function db(): DemoDb {
 
 export class DemoStore implements DataStore {
   async getHousehold(): Promise<Household> {
-    return { id: "hh-demo", name: "Leon & Sara", members };
+    return { id: "hh-demo", name: "Leon & Sara", members, savingsTarget: db().savingsTarget };
   }
 
   async listCategories(): Promise<Category[]> {
@@ -286,6 +292,31 @@ export class DemoStore implements DataStore {
 
   async getMonthNote(month: string): Promise<MonthNote | null> {
     return db().monthNotes.find((n) => n.month === month) ?? null;
+  }
+
+  async listIncomeEntries(): Promise<IncomeEntry[]> {
+    return db().incomeEntries;
+  }
+
+  async addIncomeEntry(input: Omit<IncomeEntry, "id">): Promise<IncomeEntry> {
+    const d = db();
+    const entry: IncomeEntry = { ...input, id: `inc-${++d.counter}` };
+    d.incomeEntries.push(entry);
+    return entry;
+  }
+
+  async updateIncomeEntry(id: string, patch: Partial<Omit<IncomeEntry, "id">>): Promise<void> {
+    const entry = db().incomeEntries.find((e) => e.id === id);
+    if (entry) Object.assign(entry, patch);
+  }
+
+  async deleteIncomeEntry(id: string): Promise<void> {
+    const d = db();
+    d.incomeEntries = d.incomeEntries.filter((e) => e.id !== id);
+  }
+
+  async setSavingsTarget(cents: number): Promise<void> {
+    db().savingsTarget = cents;
   }
 
   async saveMonthNote(month: string, body: string): Promise<MonthNote> {

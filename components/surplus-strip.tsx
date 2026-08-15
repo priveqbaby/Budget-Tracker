@@ -11,11 +11,16 @@ export function SurplusStrip({
   cap,
   drawn,
   left,
+  isDerived,
+  planned,
 }: {
   name: string;
   cap: number;
   drawn: number;
   left: number;
+  /** True when `cap` came from recorded income rather than the plan (PRD v3). */
+  isDerived: boolean;
+  planned: number;
 }) {
   const pct = cap > 0 ? Math.min(100, (drawn / cap) * 100) : 0;
   const exhausted = left < 0;
@@ -24,7 +29,9 @@ export function SurplusStrip({
     <section className="settle settle-3 mt-8">
       <div className="mb-2.5 flex items-baseline justify-between px-1">
         <h2 className="overline">{name}</h2>
-        <span className="text-[12px] text-ink-muted">covering overages is your call</span>
+        <span className="text-[12px] text-ink-muted">
+          {isDerived ? "against this month\u2019s actual surplus" : "covering overages is your call"}
+        </span>
       </div>
       <div className="card px-5 py-4">
         <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
@@ -45,10 +52,13 @@ export function SurplusStrip({
           </div>
           <div className="flex items-baseline gap-6">
             <div className="text-right">
-              <div className="overline !text-[10px]">Budgeted</div>
+              <div className="overline !text-[10px]">{isDerived ? "Available" : "Budgeted"}</div>
               <div className="money mt-0.5 text-[15px] text-ink-secondary">
                 {formatCentsWhole(cap)}
               </div>
+              {isDerived && cap !== planned && (
+                <div className="mt-0.5 text-[11px] text-ink-muted">plan said {formatCentsWhole(planned)}</div>
+              )}
             </div>
             <div className="text-right">
               <div className="overline !text-[10px]">Left</div>

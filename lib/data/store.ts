@@ -5,6 +5,7 @@ import type {
   FixedPayment,
   Household,
   ImportBatchMeta,
+  IncomeEntry,
   Invite,
   MonthData,
   MonthNote,
@@ -78,4 +79,17 @@ export interface DataStore {
 
   getMonthNote(month: string): Promise<MonthNote | null>;
   saveMonthNote(month: string, body: string): Promise<MonthNote>;
+
+  // --- v3 (PRD v3): recorded income, derived surplus ---
+  /** Every entry: recurring ones apply to all months, one-offs carry their month. */
+  listIncomeEntries(): Promise<IncomeEntry[]>;
+  addIncomeEntry(input: Omit<IncomeEntry, "id">): Promise<IncomeEntry>;
+  updateIncomeEntry(id: string, patch: Partial<Omit<IncomeEntry, "id">>): Promise<void>;
+  deleteIncomeEntry(id: string): Promise<void>;
+  setSavingsTarget(cents: number): Promise<void>;
+}
+
+/** Income applying to a given month: every recurring entry plus that month's one-offs. */
+export function incomeForMonth(entries: IncomeEntry[], month: string): IncomeEntry[] {
+  return entries.filter((e) => (e.isRecurring ? true : e.month === month));
 }

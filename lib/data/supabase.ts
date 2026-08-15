@@ -4,7 +4,8 @@ import type { ColumnMapping } from "@/lib/import/types";
 import type { DataStore } from "./store";
 import type {
   Category, CommitRow, FixedPayment, Household, ImportBatchMeta, Invite,
-  MonthCap, MonthData, MonthNote, Source, SourceKind, StoredRule, Transaction,
+  IncomeEntry, IncomeKind, MonthCap, MonthData, MonthNote, Source, SourceKind,
+  StoredRule, Transaction,
 } from "./types";
 import { dedupHashOf } from "@/lib/import/parse";
 import { normalizeMerchant } from "@/lib/import/normalize";
@@ -33,7 +34,7 @@ export class SupabaseStore implements DataStore {
 
   async getHousehold(): Promise<Household> {
     const { data: hh, error } = await this.supabase
-      .from("households").select("id, name").eq("id", this.householdId).single();
+      .from("households").select("id, name, savings_target").eq("id", this.householdId).single();
     if (error) throw error;
     const { data: members } = await this.supabase
       .from("household_members").select("user_id, display_name, role")
@@ -44,6 +45,7 @@ export class SupabaseStore implements DataStore {
       members: (members ?? []).map((m) => ({
         id: m.user_id, displayName: m.display_name, role: m.role,
       })),
+      savingsTarget: hh.savings_target ?? 0,
     };
   }
 
@@ -368,6 +370,60 @@ export class SupabaseStore implements DataStore {
     const { error } = await this.supabase.from("sources").delete().eq("id", id);
     if (error) throw error;
     return { removedTransactions: count ?? 0 };
+  }
+
+  async listIncomeEntries(): Promise<IncomeEntry[]> {
+    const { data, error } = await this.supabase
+      .from("income_entries").select("*").eq("household_id", this.householdId)
+      .order("created_at");
+    if (error) throw error;
+    return data.map((r) => ({
+      id: r.id, memberId: r.member_id, label: r.label, kind: r.kind as IncomeKind,
+      amount: r.amount, isRecurring: r.is_recurring, month: r.month,
+    }));
+  }
+
+  async addIncomeEntry(input: Omit<IncomeEntry, "id">): Promise<IncomeEntry> {
+    const { data, error } = await this.supabase
+      .from("income_entries")
+      .insert({
+        ...this.hh(), member_id: input.memberId, label: input.label, kind: input.kind,
+        amount: input.amount, is_recurring: input.isRecurring,
+        // The schema's check constraint keeps these two in step.
+        month: input.isRecurring ? null : input.month,
+      })
+      .select("*").single();
+    if (error) throw error;
+    return {
+      id: data.id, memberId: data.member_id, label: data.label, kind: data.kind,
+      amount: data.amount, isRecurring: data.is_recurring, month: data.month,
+    };
+  }
+
+  async updateIncomeEntry(id: string, patch: Partial<Omit<IncomeEntry, "id">>): Promise<void> {
+    const { error } = await this.supabase
+      .from("income_entries")
+      .update({
+        ...(patch.memberId !== undefined && { member_id: patch.memberId }),
+        ...(patch.label !== undefined && { label: patch.label }),
+        ...(patch.kind !== undefined && { kind: patch.kind }),
+        ...(patch.amount !== undefined && { amount: patch.amount }),
+        ...(patch.isRecurring !== undefined && { is_recurring: patch.isRecurring }),
+        ...(patch.month !== undefined && { month: patch.month }),
+      })
+      .eq("id", id);
+    if (error) throw error;
+  }
+
+  async deleteIncomeEntry(id: string): Promise<void> {
+    const { error } = await this.supabase.from("income_entries").delete().eq("id", id);
+    if (error) throw error;
+  }
+
+  async setSavingsTarget(cents: number): Promise<void> {
+    const { error } = await this.supabase
+      .from("households").update({ savings_target: cents }).eq("id", this.householdId);
+    if (error) throw error;
   }
 
   async getMonthNote(month: string): Promise<MonthNote | null> {

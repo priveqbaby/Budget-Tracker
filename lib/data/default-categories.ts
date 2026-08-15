@@ -21,6 +21,7 @@ export const DEFAULT_CATEGORIES: Array<{
   { name: "Hydro", monthlyCap: 8500, isFixed: false },
   { name: "Wifi", monthlyCap: 6100, isFixed: false },
   { name: "Streaming", monthlyCap: 5000, isFixed: false },
+  { name: "Subscriptions", monthlyCap: 6000, isFixed: false },
   { name: "Amazon Prime", monthlyCap: 800, isFixed: false },
   { name: "Unallocated surplus", monthlyCap: 51900, isFixed: false, isSurplus: true },
 ];

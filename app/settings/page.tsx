@@ -1,8 +1,10 @@
-import { getStore } from "@/lib/data";
+import { getStore, isDemoMode } from "@/lib/data";
+import { DEMO_TODAY } from "@/lib/data/demo-seed";
 import { formatCentsWhole } from "@/lib/money";
 import { CapEditor } from "@/components/cap-editor";
 import { InviteForm } from "@/components/invite-form";
 import { SourceManager } from "@/components/source-manager";
+import { IncomeManager } from "@/components/income-manager";
 
 export default async function SettingsPage() {
   const store = await getStore();
@@ -14,6 +16,8 @@ export default async function SettingsPage() {
     store.listInvites(),
     store.getSourceTransactionCounts(),
   ]);
+  const incomeEntries = await store.listIncomeEntries();
+  const thisMonth = (isDemoMode() ? DEMO_TODAY : new Date().toISOString().slice(0, 10)).slice(0, 7);
 
   const variable = categories.filter((c) => !c.isFixed && !c.isSurplus);
   const fixed = categories.filter((c) => c.isFixed);
@@ -35,6 +39,19 @@ export default async function SettingsPage() {
       </header>
 
       <section className="settle settle-1 mt-7">
+        <div className="mb-2.5 flex items-baseline justify-between px-1">
+          <h2 className="overline">Income</h2>
+          <span className="text-[12px] text-ink-muted">surplus follows what lands here</span>
+        </div>
+        <IncomeManager
+          entries={incomeEntries}
+          members={household.members.map((m) => ({ id: m.id, displayName: m.displayName }))}
+          savingsTarget={household.savingsTarget}
+          defaultMonth={thisMonth}
+        />
+      </section>
+
+      <section className="settle settle-2 mt-9">
         <h2 className="overline mb-2.5 px-1">Budget lines</h2>
         <div className="card overflow-hidden">
           <div className="border-b border-hairline bg-sunken/60 px-5 py-2 text-[11.5px] font-semibold uppercase tracking-wider text-ink-muted">

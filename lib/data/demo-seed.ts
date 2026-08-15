@@ -4,6 +4,7 @@ import type {
   Category,
   FixedPayment,
   ImportBatchMeta,
+  IncomeEntry,
   Invite,
   Member,
   MonthCap,
@@ -26,6 +27,9 @@ function mulberry32(seed: number) {
 }
 
 export const DEMO_TODAY = "2026-08-14";
+
+/** Monthly savings intent (cents). Measured against actual surplus, never enforced. */
+export const DEMO_SAVINGS_TARGET = 100000;
 
 export const members: Member[] = [
   { id: "leon", displayName: "Leon", role: "owner" },
@@ -74,8 +78,9 @@ export const categories: Category[] = [
   { id: "hydro", name: "Hydro", monthlyCap: 8500, isFixed: false, isSurplus: false, sortOrder: 13 },
   { id: "wifi", name: "Wifi", monthlyCap: 6100, isFixed: false, isSurplus: false, sortOrder: 14 },
   { id: "streaming", name: "Streaming", monthlyCap: 5000, isFixed: false, isSurplus: false, sortOrder: 15 },
-  { id: "prime", name: "Amazon Prime", monthlyCap: 800, isFixed: false, isSurplus: false, sortOrder: 16 },
-  { id: "surplus", name: "Unallocated surplus", monthlyCap: 51900, isFixed: false, isSurplus: true, sortOrder: 17 },
+  { id: "subs", name: "Subscriptions", monthlyCap: 6000, isFixed: false, isSurplus: false, sortOrder: 16 },
+  { id: "prime", name: "Amazon Prime", monthlyCap: 800, isFixed: false, isSurplus: false, sortOrder: 17 },
+  { id: "surplus", name: "Unallocated surplus", monthlyCap: 51900, isFixed: false, isSurplus: true, sortOrder: 18 },
 ];
 
 type SourceId = "src-amex" | "src-ws-leon" | "src-ws-sara";
@@ -104,6 +109,9 @@ const recurring: Recur[] = [
   { categoryId: "streaming", merchant: "SPOTIFY", source: "src-amex", day: 5, amount: 1699 },
   { categoryId: "streaming", merchant: "CRAVE", source: "src-ws-sara", day: 7, amount: 2299 },
   { categoryId: "prime", merchant: "AMAZON PRIME MEMBER TORONTO ON", source: "src-ws-leon", day: 10, amount: 799 },
+  { categoryId: "subs", merchant: "CLAUDE.AI SUBSCRIPTION", source: "src-amex", day: 8, amount: 2875 },
+  { categoryId: "subs", merchant: "APPLE.COM/BILL ICLOUD", source: "src-ws-sara", day: 12, amount: 1149 },
+  { categoryId: "subs", merchant: "NYTIMES DIGITAL", source: "src-ws-leon", day: 14, amount: 800 },
   { categoryId: "gym", merchant: "ECONOFITNESS", source: "src-amex", day: 2, amount: 2528 },
   { categoryId: "gym", merchant: "ECONOFITNESS", source: "src-ws-sara", day: 2, amount: 2528 },
   { categoryId: "gym", merchant: "CLUB DE TENNIS JARRY MONTREAL", source: "src-ws-leon", day: 9, amount: 8500 },
@@ -327,5 +335,30 @@ export function buildSeed() {
     },
   ];
 
-  return { transactions, fixedPayments, monthCaps, rules, importBatches, invites, monthNotes };
+  // Income (PRD v3). The two contribution floors are recurring; everything
+  // else is recorded as it lands. August carries a tax return, which is the
+  // whole point of the feature: the surplus moves without re-planning.
+  const incomeEntries: IncomeEntry[] = [
+    { id: "inc-1", memberId: "leon", label: "Leon — contribution floor", kind: "contribution",
+      amount: 150000, isRecurring: true, month: null },
+    { id: "inc-2", memberId: "sara", label: "Sara — contribution floor", kind: "contribution",
+      amount: 150000, isRecurring: true, month: null },
+    { id: "inc-3", memberId: "leon", label: "Leon — salary above floor", kind: "salary",
+      amount: 211600, isRecurring: true, month: null },
+    { id: "inc-4", memberId: "sara", label: "Sara — salary above floor", kind: "salary",
+      amount: 150000, isRecurring: true, month: null },
+    { id: "inc-5", memberId: "leon", label: "Trading — realized gains", kind: "trading",
+      amount: 42350, isRecurring: false, month: "2026-07" },
+    { id: "inc-6", memberId: "sara", label: "Freelance design project", kind: "side_hustle",
+      amount: 90000, isRecurring: false, month: "2026-07" },
+    { id: "inc-7", memberId: null, label: "2025 tax return", kind: "tax_return",
+      amount: 318000, isRecurring: false, month: "2026-08" },
+    { id: "inc-8", memberId: "leon", label: "Trading — realized gains", kind: "trading",
+      amount: 18800, isRecurring: false, month: "2026-08" },
+  ];
+
+  return {
+    transactions, fixedPayments, monthCaps, rules, importBatches, invites,
+    monthNotes, incomeEntries,
+  };
 }

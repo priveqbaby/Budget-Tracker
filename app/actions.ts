@@ -5,7 +5,7 @@ import { getStore } from "@/lib/data";
 import { buildImportPreview, guessMapping } from "@/lib/import/engine";
 import { classifyMerchants } from "@/lib/import/categorize";
 import type { ColumnMapping } from "@/lib/import/types";
-import type { CommitRow, SourceKind } from "@/lib/data/types";
+import type { CommitRow, IncomeEntry, SourceKind } from "@/lib/data/types";
 import Papa from "papaparse";
 
 export async function toggleFixedPaid(categoryId: string, month: string, isPaid: boolean) {
@@ -82,6 +82,37 @@ export async function deleteSource(id: string): Promise<{ removedTransactions: n
   revalidatePath("/import");
   revalidatePath("/");
   return result;
+}
+
+export async function addIncomeEntry(input: Omit<IncomeEntry, "id">) {
+  const store = await getStore();
+  await store.addIncomeEntry(input);
+  revalidatePath("/");
+  revalidatePath("/settings");
+}
+
+export async function updateIncomeEntry(
+  id: string,
+  patch: Partial<Omit<IncomeEntry, "id">>,
+) {
+  const store = await getStore();
+  await store.updateIncomeEntry(id, patch);
+  revalidatePath("/");
+  revalidatePath("/settings");
+}
+
+export async function deleteIncomeEntry(id: string) {
+  const store = await getStore();
+  await store.deleteIncomeEntry(id);
+  revalidatePath("/");
+  revalidatePath("/settings");
+}
+
+export async function setSavingsTarget(cents: number) {
+  const store = await getStore();
+  await store.setSavingsTarget(cents);
+  revalidatePath("/");
+  revalidatePath("/settings");
 }
 
 export async function saveMonthNote(month: string, body: string) {
