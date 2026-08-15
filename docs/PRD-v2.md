@@ -140,3 +140,14 @@ policy.
 - Recurring-subscription detection; cap rollover between months
 - Plaid auto-sync; points optimization (unchanged from v1)
 - Real Amex/Wealthsimple fixture exports still owed from v1 open question 1
+
+---
+
+## Appendix: what came next
+
+The scored evaluation of iteration 3 candidates lives in
+[`docs/V3-RECOMMENDATION.md`](V3-RECOMMENDATION.md) — four candidates weighed through a
+financial-advisor lens and an operator lens. Headline: close the surplus loop
+(advisor 8.5, operator 7.2), ship recurring-commitment detection as a rider, hold the
+rewards optimizer despite it being the differentiated idea, and treat Plaid as a
+retention trigger rather than a feature decision.
