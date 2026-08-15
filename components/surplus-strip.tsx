@@ -22,7 +22,10 @@ export function SurplusStrip({
   isDerived: boolean;
   planned: number;
 }) {
-  const pct = cap > 0 ? Math.min(100, (drawn / cap) * 100) : 0;
+  // A derived surplus can be negative (income didn't cover the plan). Treat
+  // that as fully drawn rather than an empty bar, and say so in the copy.
+  const noSurplus = cap <= 0;
+  const pct = noSurplus ? 100 : Math.min(100, (drawn / cap) * 100);
   const exhausted = left < 0;
 
   return (
@@ -37,7 +40,13 @@ export function SurplusStrip({
         <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
           <div>
             <div className="text-[13px] text-ink-secondary">
-              {drawn === 0 ? (
+              {noSurplus ? (
+                <>
+                  <strong className="text-danger">There is no surplus this month.</strong>{" "}
+                  Recorded income doesn’t cover what the plan allocates
+                  {drawn > 0 && <>, and overages add {formatCentsWhole(drawn)} on top</>}.
+                </>
+              ) : drawn === 0 ? (
                 <>Nothing drawn — every category is inside its cap.</>
               ) : (
                 <>

@@ -84,8 +84,44 @@ export async function deleteSource(id: string): Promise<{ removedTransactions: n
   return result;
 }
 
+const INCOME_KINDS: IncomeEntry["kind"][] = [
+  "contribution", "salary", "trading", "side_hustle", "tax_return", "gift", "other",
+];
+
+/**
+ * Income is client-supplied, so the same rules the schema enforces are checked
+ * here: a real member (or joint), a positive amount, a known kind, and a month
+ * that exists exactly when the entry is a one-off.
+ */
+async function validateIncome(
+  store: Awaited<ReturnType<typeof getStore>>,
+  input: Partial<Omit<IncomeEntry, "id">>,
+) {
+  if (input.memberId) {
+    const household = await store.getHousehold();
+    if (!household.members.some((m) => m.id === input.memberId)) {
+      throw new Error("That person is not in this household");
+    }
+  }
+  if (input.amount !== undefined && (!Number.isFinite(input.amount) || input.amount <= 0)) {
+    throw new Error("Income must be a positive amount");
+  }
+  if (input.kind !== undefined && !INCOME_KINDS.includes(input.kind)) {
+    throw new Error("Unknown income kind");
+  }
+  if (input.isRecurring !== undefined) {
+    if (input.isRecurring && input.month) {
+      throw new Error("A recurring entry applies to every month");
+    }
+    if (!input.isRecurring && !/^\d{4}-\d{2}$/.test(input.month ?? "")) {
+      throw new Error("A one-off needs the month it landed in");
+    }
+  }
+}
+
 export async function addIncomeEntry(input: Omit<IncomeEntry, "id">) {
   const store = await getStore();
+  await validateIncome(store, input);
   await store.addIncomeEntry(input);
   revalidatePath("/");
   revalidatePath("/settings");
@@ -96,6 +132,7 @@ export async function updateIncomeEntry(
   patch: Partial<Omit<IncomeEntry, "id">>,
 ) {
   const store = await getStore();
+  await validateIncome(store, patch);
   await store.updateIncomeEntry(id, patch);
   revalidatePath("/");
   revalidatePath("/settings");
@@ -109,6 +146,7 @@ export async function deleteIncomeEntry(id: string) {
 }
 
 export async function setSavingsTarget(cents: number) {
+  if (!Number.isFinite(cents) || cents < 0) throw new Error("Invalid savings target");
   const store = await getStore();
   await store.setSavingsTarget(cents);
   revalidatePath("/");

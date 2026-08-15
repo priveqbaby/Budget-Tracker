@@ -2,9 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  addIncomeEntry, deleteIncomeEntry, setSavingsTarget, updateIncomeEntry,
-} from "@/app/actions";
+import { addIncomeEntry, deleteIncomeEntry, setSavingsTarget } from "@/app/actions";
 import { formatCentsWhole, monthLabel } from "@/lib/money";
 import type { IncomeEntry, IncomeKind } from "@/lib/data/types";
 
@@ -149,8 +147,16 @@ function AddIncome({ members, defaultMonth }: { members: MemberDto[]; defaultMon
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
-  const cents = Math.round(Number(amount.replace(/[$,\s]/g, "")) * 100);
-  const valid = label.trim().length > 0 && Number.isFinite(cents) && cents > 0;
+  const raw = amount.replace(/[$,\s]/g, "");
+  const cents = Math.round(Number(raw) * 100);
+  const valid =
+    label.trim().length > 0 &&
+    raw.length > 0 &&
+    Number.isFinite(cents) &&
+    cents > 0 &&
+    // A one-off must carry a real month: the schema's check constraint rejects
+    // anything else, and the demo store would hide it from every month.
+    (isRecurring || /^\d{4}-\d{2}$/.test(month));
 
   if (!open) {
     return (
@@ -264,7 +270,8 @@ function SavingsTarget({ current }: { current: number }) {
   const [pending, startTransition] = useTransition();
 
   const save = () => {
-    const dollars = Number(value);
+    // An empty field is a mis-edit, not "target zero" — Number("") is 0.
+    const dollars = value.trim() === "" ? NaN : Number(value);
     if (!Number.isFinite(dollars) || dollars < 0) {
       setValue(String(Math.round(current / 100)));
       return;

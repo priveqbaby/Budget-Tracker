@@ -148,49 +148,53 @@ export function summarizeMonth(
     (s, v) => s + (v.cap > 0 ? Math.max(0, v.spent - v.cap) : 0),
     0,
   );
+  // Income and the surplus it implies — derived once and shared by both the
+  // income strip and the overage strip, which must always agree (PRD v3 §2.2).
+  const monthIncome = incomeForMonth(options.incomeEntries ?? [], data.month);
+  const incomeTotal = monthIncome.reduce((s, e) => s + e.amount, 0);
+  const hasIncome = monthIncome.length > 0;
+
+  // Allocated must match what the dashboard shows: fixed lines report the
+  // amount on their fixed_payments row when one exists (that is what the
+  // checklist displays), everything else reports its cap.
+  const allocated = categories
+    .filter((c) => !c.isSurplus)
+    .reduce((sum, c) => {
+      if (c.isFixed) {
+        const fp = data.fixedPayments.find((f) => f.categoryId === c.id);
+        return sum + (fp?.amount ?? capOf(c));
+      }
+      return sum + capOf(c);
+    }, 0);
+
   // Overages draw against whatever surplus actually exists this month, not the
   // planning constant — so a tax-return month can genuinely absorb more.
-  const monthIncomeEntries = incomeForMonth(options.incomeEntries ?? [], data.month);
-  const recordedIncome = monthIncomeEntries.reduce((s, e) => s + e.amount, 0);
-  const allocatedForSurplus = categories
-    .filter((c) => !c.isSurplus)
-    .reduce((s, c) => s + capOf(c), 0);
-  const availableSurplus =
-    monthIncomeEntries.length > 0 ? recordedIncome - allocatedForSurplus : surplusCap;
+  const availableSurplus = hasIncome ? incomeTotal - allocated : surplusCap;
   const surplus = surplusCategory
     ? {
         cap: availableSurplus,
         drawn,
         left: availableSurplus - drawn,
-        isDerived: monthIncomeEntries.length > 0,
+        isDerived: hasIncome,
         planned: surplusCap,
       }
     : null;
 
-  // --- Income and derived surplus (PRD v3) -------------------------------
-  const monthIncome = incomeForMonth(options.incomeEntries ?? [], data.month);
-  const incomeTotal = monthIncome.reduce((s, e) => s + e.amount, 0);
+  // --- Income (PRD v3) ----------------------------------------------------
   const incomeByMember: Record<string, number> = {};
   for (const e of monthIncome) {
     const key = e.memberId ?? "household";
     incomeByMember[key] = (incomeByMember[key] ?? 0) + e.amount;
   }
-  // Everything the plan spoken for, excluding the surplus line itself.
-  const allocated =
-    categories
-      .filter((c) => !c.isSurplus)
-      .reduce((s, c) => s + capOf(c), 0);
-  const plannedSurplus = surplusCap;
-  const hasIncome = monthIncome.length > 0;
   const income = {
     total: incomeTotal,
     byMember: incomeByMember,
     entries: monthIncome,
     allocated,
-    plannedSurplus,
+    plannedSurplus: surplusCap,
     // With nothing recorded, reporting income − allocated would show a huge
     // fake shortfall; fall back to the plan and label it.
-    actualSurplus: hasIncome ? incomeTotal - allocated : plannedSurplus,
+    actualSurplus: availableSurplus,
     isPlanned: !hasIncome,
     savingsTarget: options.savingsTarget ?? 0,
   };

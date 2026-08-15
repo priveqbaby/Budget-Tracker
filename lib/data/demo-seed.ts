@@ -344,7 +344,7 @@ export function buildSeed() {
     { id: "inc-2", memberId: "sara", label: "Sara — contribution floor", kind: "contribution",
       amount: 150000, isRecurring: true, month: null },
     { id: "inc-3", memberId: "leon", label: "Leon — salary above floor", kind: "salary",
-      amount: 211600, isRecurring: true, month: null },
+      amount: 217600, isRecurring: true, month: null },
     { id: "inc-4", memberId: "sara", label: "Sara — salary above floor", kind: "salary",
       amount: 150000, isRecurring: true, month: null },
     { id: "inc-5", memberId: "leon", label: "Trading — realized gains", kind: "trading",

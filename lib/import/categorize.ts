@@ -31,7 +31,7 @@ const HEURISTICS: Array<{ pattern: RegExp; category: RegExp }> = [
 
   { pattern: /AMAZON\s*PRIME|PRIME\s*MEMBER/i, category: /amazon prime/i },
   { pattern: /NETFLIX|SPOTIFY|DISNEY|CRAVE|YOUTUBE\s*PREMIUM|HBO|PARAMOUNT|APPLE\s*TV/i, category: /stream/i },
-  { pattern: /CLAUDE\.AI|ANTHROPIC|OPENAI|CHATGPT|ICLOUD|APPLE\.COM\/BILL|GOOGLE\s*ONE|DROPBOX|NOTION|FIGMA|GITHUB|NYTIMES|SUBSTACK|PATREON|ADOBE|MICROSOFT\s*365/i, category: /subscription/i },
+  { pattern: /CLAUDE\.AI|ANTHROPIC|OPENAI|CHATGPT|ICLOUD|APPLE\.COM|GOOGLE\s*ONE|DROPBOX|NOTION|FIGMA|GITHUB|NYTIMES|SUBSTACK|PATREON|ADOBE|MICROSOFT\s*365/i, category: /subscription/i },
 
   { pattern: /FIZZ|VIRGIN PLUS|KOODO|ROGERS|TELUS|BELL MOBIL|PUBLIC MOBILE|CHATR/i, category: /^cell$/i },
   { pattern: /VIDEOTRON|BELL CANADA|EBOX|TEKSAVVY|OXIO|COLBA/i, category: /wifi|internet/i },
