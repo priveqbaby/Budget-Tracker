@@ -1,51 +1,53 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   Yoko Space Design System v1.2.0 — ported from Figma (file fVrPewJapYg1xDI3xmdifa).
+   "Giverny" — an impressionist colour field seen through liquid glass.
 
-   Values marked (Yoko) are the design system's own variables, read from the
-   file. Values marked (derived) are ours: the file is the documentation kit,
-   so it carries the foundation but no accent ramp and no semantic status
-   palette. Derived colors were validated for colorblind separation and
-   contrast against Yoko's white surface before use.
+   Typography and the spacing/radius scale still come from Yoko Space
+   (Figma fVrPewJapYg1xDI3xmdifa) — Titillium Web, 12/16 radii. The palette
+   and every surface treatment are ours: a drifting pond of colour behind
+   translucent, backdrop-blurred panes.
+
+   The status trio was validated on the pond surface (#eef4f6):
+   CVD ΔE 8.6, normal-vision ΔE 19.9, chroma and lightness bands pass. Gold
+   sits under 3:1 by design, which is why every status also carries a word.
 --------------------------------------------------------------------------- */
 
 @theme {
-  /* Surfaces — bg/neutral/* (Yoko) */
-  --color-page: #f9f9f9;        /* bg/neutral/3 */
-  --color-surface: #ffffff;     /* bg/neutral/1 */
+  /* Surfaces — glass over the pond */
+  --color-page: #eef4f6;
+  --color-surface: rgba(255,255,255,.72);
   --color-surface-2: #fcfcfc;   /* bg/neutral/2 */
-  --color-sunken: #f1f1f1;      /* bg/neutral/4 */
+  --color-sunken: rgba(222,235,239,.72);
   --color-inverse: #000000;     /* bg/neutral/10 */
 
-  /* Borders — border/neutral/* (Yoko) */
-  --color-hairline: #e3e3e3;      /* border/neutral/8 */
-  --color-hairline-deep: #d5d5d5; /* border/neutral/7 */
+  /* Borders */
+  --color-hairline: rgba(27,43,52,.09);
+  --color-hairline-deep: rgba(27,43,52,.16);
   --color-hairline-strong: #b8b8b8; /* border/neutral/6 */
 
-  /* Ink — fg/neutral/* (Yoko) */
-  --color-ink: #000000;            /* fg/neutral/1 */
-  --color-ink-secondary: #2b2b2b;  /* fg/neutral/3 */
-  --color-ink-muted: #646464;      /* fg/neutral/5 */
+  /* Ink — deep pond blue-black */
+  --color-ink: #16262f;
+  --color-ink-secondary: #47616e;
+  --color-ink-muted: #7a95a2;
   --color-ink-inverse: #ffffff;    /* fg/neutral/10 */
 
-  /* Accent — Color/Yoko (Yoko). Hover step and wash are (derived). */
-  --color-accent: #021cfc;
-  --color-accent-deep: #0114c4;
-  --color-accent-wash: #e7eaff;
+  /* Accent — wisteria */
+  --color-accent: #6b62c9;
+  --color-accent-deep: #514ba6;
+  --color-accent-wash: #ece9fb;
 
-  /* Semantic status (derived) — validated: CVD ΔE 14.9, normal ΔE 23.5.
-     Amber sits below 3:1 on white by design, so every status is always
-     paired with a visible text label, never carried by color alone. */
-  --color-ok: #0f7a33;
-  --color-ok-track: #dff0e4;
-  --color-warn: #d99400;
-  --color-warn-track: #fbeecd;
-  --color-danger: #ce1f2e;
-  --color-danger-track: #fadfe1;
+  /* Semantic status — lily pad, Giverny gold, water lily. Validated above. */
+  --color-ok: #158a57;
+  --color-ok-track: #d3ece0;
+  --color-warn: #c58a1e;
+  --color-warn-track: #f6e7c9;
+  --color-danger: #c2415f;
+  --color-danger-track: #f6dae1;
 
-  /* Typography — typography/* (Yoko). One family, as the system specifies. */
+  /* Typography — Titillium Web from Yoko Space; one family throughout. */
   --font-sans: "Titillium Web", system-ui, sans-serif;
+  --lift: cubic-bezier(.2,.8,.2,1);
   --font-display: "Titillium Web", system-ui, sans-serif;
   --font-mono: "Titillium Web", ui-monospace, monospace;
 
@@ -53,8 +55,8 @@
   --radius-control: 12px;
   --radius-card: 16px;
 
-  /* shadow/shadow-4 (Yoko) — note the blue-tinted shadow color */
-  --shadow-card: 0 4px 4px -2px #18274b14, 0 2px 4px -2px #18274b1f;
+  /* Soft, high-spread shadow so panes look like they float */
+  --shadow-card: 0 1px 1px rgba(22,38,47,.04), 0 8px 24px -8px rgba(22,38,47,.14);
   --shadow-pop: 0 8px 16px -4px #18274b1f, 0 4px 8px -4px #18274b14;
 }
 
@@ -67,10 +69,11 @@ html {
   color-scheme: light;
 }
 
-/* Yoko is flat and high-contrast — no grain, no gradient wash. */
+
 body {
   background-color: var(--color-page);
   color: var(--color-ink);
+  position: relative;
   font-family: var(--font-sans);
   font-size: 16px;      /* typography/size/base */
   line-height: 1.35;
@@ -100,27 +103,48 @@ body {
   line-height: 16px;
 }
 
+/* Liquid glass: a translucent pane over the drifting colour field, with a
+   specular highlight along the top edge. */
 .card {
+  position: relative;
   background: var(--color-surface);
-  border: 1px solid var(--color-hairline);
+  -webkit-backdrop-filter: saturate(165%) blur(20px);
+  backdrop-filter: saturate(165%) blur(20px);
+  border: 1px solid rgba(255,255,255,.55);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
+  box-shadow:
+    var(--shadow-card),
+    inset 0 1px 0 rgba(255,255,255,.85),
+    inset 0 -1px 0 rgba(22,38,47,.04);
 }
 
-/* Budget meter: square baseline, 4px rounded data-end, track a lighter step
-   of the same ramp, hairline pace tick. */
+/* Budget meter: a liquid pill. Track is a lighter step of the same ramp. */
 .meter {
   position: relative;
   height: 10px;
-  border-radius: 0 5px 5px 0;
+  border-radius: 999px;
   overflow: hidden;
 }
 .meter-fill {
+  /* Stays absolute + inset-stretched; a relative position here collapses
+     the fill to zero height. */
   position: absolute;
   inset: 0 auto 0 0;
-  border-radius: 0 4px 4px 0;
-  transition: width 400ms cubic-bezier(0.2, 0, 0, 1);
+  border-radius: 999px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.28), 0 1px 3px -1px rgba(22,38,47,.3);
+  transition: width 900ms var(--lift);
 }
+/* Faint travelling highlight — weak on purpose, the fill colour is the signal. */
+.meter-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 42%, rgba(255,255,255,.22) 50%, transparent 58%);
+  background-size: 300% 100%;
+  animation: sheen 5s linear infinite;
+}
+@keyframes sheen { from { background-position: 200% 0; } to { background-position: -80% 0; } }
 .meter-tick {
   position: absolute;
   top: -3px;
@@ -162,10 +186,19 @@ body {
   line-height: 20px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+  transition: transform .16s var(--lift), box-shadow .22s, background .18s, border-color .18s;
 }
-.btn-primary { background: var(--color-accent); color: var(--color-ink-inverse); }
-.btn-primary:hover { background: var(--color-accent-deep); }
+.btn:hover { transform: translateY(-1.5px); }
+.btn:active { transform: translateY(1px) scale(.985); }
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-accent), #8b7fe0);
+  color: var(--color-ink-inverse);
+  box-shadow: 0 8px 18px -8px rgba(107,98,201,.75), inset 0 1px 0 rgba(255,255,255,.32);
+}
+.btn-primary:hover {
+  background: linear-gradient(135deg, var(--color-accent-deep), #7a6ed6);
+  box-shadow: 0 12px 24px -8px rgba(107,98,201,.85), inset 0 1px 0 rgba(255,255,255,.4);
+}
 .btn-primary:disabled { opacity: 0.45; cursor: default; }
 .btn-ghost {
   background: var(--color-surface);
@@ -184,12 +217,13 @@ body {
   font-weight: 600;
   line-height: 20px;
   color: var(--color-ink-secondary);
-  transition: background 100ms ease, color 100ms ease;
+  transition: background .22s var(--lift), color .22s, transform .22s var(--lift);
 }
-.navlink:hover { background: var(--color-sunken); color: var(--color-ink); }
+.navlink:hover { background: var(--color-sunken); color: var(--color-ink); transform: translateX(3px); }
 .navlink[data-active="true"] {
-  background: var(--color-inverse);
+  background: linear-gradient(135deg, var(--color-accent), #8b7fe0);
   color: var(--color-ink-inverse);
+  box-shadow: 0 6px 16px -6px rgba(107,98,201,.7), inset 0 1px 0 rgba(255,255,255,.35);
 }
 
 .field {
@@ -236,4 +270,30 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .settle, .settle-1, .settle-2, .settle-3, .settle-4, .rise-in { animation: none; }
   .meter-fill { transition: none; }
+  .meter-fill::after { animation: none; }
+  .bloom { animation: none; }
+  .navlink:hover, .btn:hover { transform: none; }
+}
+
+/* The pond: a slow-drifting colour field behind every pane of glass. */
+.pond { position: fixed; inset: 0; z-index: -2; overflow: hidden; pointer-events: none; }
+.bloom { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .5; will-change: transform; }
+.bloom-1 { width: 46vw; height: 46vw; left: -8vw; top: -10vw; background: #9fc7e8; animation: drift-a 44s ease-in-out infinite; }
+.bloom-2 { width: 40vw; height: 40vw; right: -6vw; top: 4vw; background: #b7a8e0; animation: drift-b 56s ease-in-out infinite; }
+.bloom-3 { width: 38vw; height: 38vw; left: 22vw; top: 38vh; background: #a8cfb4; animation: drift-c 50s ease-in-out infinite; }
+.bloom-4 { width: 30vw; height: 30vw; right: 8vw; bottom: -6vw; background: #f0b9c6; animation: drift-a 62s ease-in-out infinite reverse; }
+.bloom-5 { width: 24vw; height: 24vw; left: -4vw; bottom: 6vh; background: #f2d8a0; animation: drift-b 48s ease-in-out infinite; }
+@keyframes drift-a {
+  0%,100% { transform: translate3d(0,0,0) scale(1); }
+  33% { transform: translate3d(6vw,4vh,0) scale(1.12); }
+  66% { transform: translate3d(-3vw,7vh,0) scale(.94); }
+}
+@keyframes drift-b {
+  0%,100% { transform: translate3d(0,0,0) scale(1); }
+  40% { transform: translate3d(-7vw,5vh,0) scale(1.08); }
+  70% { transform: translate3d(4vw,-4vh,0) scale(.96); }
+}
+@keyframes drift-c {
+  0%,100% { transform: translate3d(0,0,0) scale(1); }
+  50% { transform: translate3d(5vw,-6vh,0) scale(1.14); }
 }

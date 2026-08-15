@@ -52,8 +52,8 @@ const STATUS_LABEL: Record<CategoryRowDto["status"], string> = {
 
 // Member identity colors (fixed assignment, never re-ranked).
 const MEMBER_COLOR: Record<string, string> = {
-  leon: "#021cfc",
-  sara: "#2b2b2b",
+  leon: "#6b62c9",
+  sara: "#3f7f96",
 };
 
 export function CategoryRows({

@@ -15,6 +15,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        <div className="pond" aria-hidden>
+          <span className="bloom bloom-1" /><span className="bloom bloom-2" />
+          <span className="bloom bloom-3" /><span className="bloom bloom-4" />
+          <span className="bloom bloom-5" />
+        </div>
         <div className="mx-auto flex min-h-screen max-w-[1200px] flex-col md:flex-row">
           <MobileTopBar />
           <Sidebar demo={isDemoMode()} />
