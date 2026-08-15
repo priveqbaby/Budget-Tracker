@@ -5,13 +5,82 @@ import { getStore } from "@/lib/data";
 import { buildImportPreview, guessMapping } from "@/lib/import/engine";
 import { classifyMerchants } from "@/lib/import/categorize";
 import type { ColumnMapping } from "@/lib/import/types";
-import type { CommitRow } from "@/lib/data/types";
+import type { CommitRow, SourceKind } from "@/lib/data/types";
 import Papa from "papaparse";
 
 export async function toggleFixedPaid(categoryId: string, month: string, isPaid: boolean) {
   const store = await getStore();
   await store.setFixedPaid(categoryId, month, isPaid);
   revalidatePath("/");
+}
+
+/* ---------------------------------------------------------------- v2 edits */
+
+export async function setTransactionExcluded(transactionId: string, isExcluded: boolean) {
+  const store = await getStore();
+  await store.setTransactionExcluded(transactionId, isExcluded);
+  revalidatePath("/");
+}
+
+/** Deleting lowers the row's dedup count — re-importing the statement restores it. */
+export async function deleteTransaction(transactionId: string) {
+  const store = await getStore();
+  await store.deleteTransaction(transactionId);
+  revalidatePath("/");
+}
+
+export async function undoImportBatch(batchId: string): Promise<{ removed: number }> {
+  const store = await getStore();
+  const result = await store.deleteBatch(batchId);
+  revalidatePath("/");
+  revalidatePath("/import");
+  return result;
+}
+
+export async function addManualTransaction(input: {
+  sourceId: string;
+  date: string;
+  description: string;
+  amountCents: number;
+  categoryId: string | null;
+}) {
+  const store = await getStore();
+  await store.addManualTransaction({
+    sourceId: input.sourceId,
+    date: input.date,
+    description: input.description,
+    amount: input.amountCents,
+    categoryId: input.categoryId,
+  });
+  revalidatePath("/");
+  revalidatePath("/import");
+}
+
+export async function updateSource(
+  id: string,
+  patch: { label?: string; ownerMemberId?: string; kind?: SourceKind },
+) {
+  const store = await getStore();
+  await store.updateSource(id, patch);
+  revalidatePath("/settings");
+  revalidatePath("/import");
+  revalidatePath("/");
+}
+
+export async function deleteSource(id: string): Promise<{ removedTransactions: number }> {
+  const store = await getStore();
+  const result = await store.deleteSource(id);
+  revalidatePath("/settings");
+  revalidatePath("/import");
+  revalidatePath("/");
+  return result;
+}
+
+export async function saveMonthNote(month: string, body: string) {
+  const store = await getStore();
+  const note = await store.saveMonthNote(month, body);
+  revalidatePath("/");
+  return note;
 }
 
 export async function recategorizeTransaction(transactionId: string, categoryId: string) {

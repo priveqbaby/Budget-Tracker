@@ -17,20 +17,36 @@ export interface CategoryOption {
 
 export type MerchantAssignments = Record<string, string | null>; // merchant -> categoryId
 
+/**
+ * Merchant → category guesses, aimed at the Sankey line names (PRD v2 §2.3).
+ * Order matters: the most specific pattern wins, so "AMAZON PRIME MEMBER" is
+ * caught before the generic Amazon rule, and "UBER EATS" before "UBER TRIP".
+ * A merchant that matches nothing stays uncategorized rather than guessing —
+ * the dashboard's Uncategorized row exists for exactly that.
+ */
 const HEURISTICS: Array<{ pattern: RegExp; category: RegExp }> = [
-  { pattern: /IGA|METRO|PROVIGO|MAXI|COSTCO WHOLESALE|SUPER C|ADONIS|PA NATURE|MARCHE/i, category: /grocer|food/i },
-  { pattern: /RESTAURANT|CAFE|COFFEE|TIM HORTONS|STARBUCKS|MCDONALD|SUSHI|PIZZ|BURGER|BISTRO|BAR\b|BRASSERIE|POULET|UBER\s*EATS|DOORDASH|SKIP/i, category: /restaurant|dining|eating|food/i },
-  { pattern: /STM|EXO|BIXI|UBER(?!\s*EATS)|LYFT|TAXI|VIA RAIL|COMMUNAUTO/i, category: /transit|transport/i },
-  { pattern: /PETRO|ESSO|SHELL|ULTRAMAR|COUCHE-?TARD/i, category: /gas|car|transport/i },
-  { pattern: /HYDRO|ENERGIR|BELL|VIDEOTRON|ROGERS|TELUS|FIZZ|VIRGIN PLUS|KOODO/i, category: /utilit|internet|phone/i },
-  { pattern: /NETFLIX|SPOTIFY|DISNEY|CRAVE|APPLE\.COM|YOUTUBE|PRIME|CLAUDE\.AI|ANTHROPIC/i, category: /subscript|entertain/i },
-  { pattern: /PHARMAPRIX|JEAN COUTU|UNIPRIX|PHARMACIE|CLINIQUE|DENTAIRE/i, category: /health|pharma/i },
-  { pattern: /AIR CANADA|PORTER|WESTJET|AIRBNB|HOTEL|EXPEDIA|FLAIR/i, category: /travel/i },
-  { pattern: /SAQ|LCBO|DEPANNEUR/i, category: /alcohol|grocer|food/i },
-  { pattern: /BOULANGERIE|PATISSERIE|FROMAGERIE|BOUCHERIE|POISSONNERIE/i, category: /grocer|food/i },
-  { pattern: /AMAZON|AMZN|WALMART|CANADIAN TIRE|IKEA|DOLLARAMA|HOME DEPOT|RONA|BUREAU EN GROS/i, category: /household|home|shopping/i },
-  { pattern: /SIMONS|WINNERS|UNIQLO|ZARA|H&M|SPORT/i, category: /cloth|shopping|personal/i },
-  { pattern: /GYM|ECONOFITNESS|NAUTILUS|YMCA|CLIMBING|BLOC/i, category: /fitness|health|personal/i },
+  // Groceries, cafés, restaurants and delivery all land on the single Food line.
+  { pattern: /IGA|METRO|PROVIGO|MAXI|COSTCO WHOLESALE|SUPER C|ADONIS|PA NATURE|MARCHE|BOULANGERIE|PATISSERIE|FROMAGERIE|BOUCHERIE|POISSONNERIE|DEPANNEUR/i, category: /^food$/i },
+  { pattern: /RESTAURANT|CAFE|COFFEE|TIM HORTONS|STARBUCKS|MCDONALD|SUSHI|PIZZ|BURGER|BISTRO|BRASSERIE|POULET|RESTO|UBER\s*EATS|DOORDASH|SKIP\s*THE/i, category: /^food$/i },
+
+  { pattern: /AMAZON\s*PRIME|PRIME\s*MEMBER/i, category: /amazon prime/i },
+  { pattern: /NETFLIX|SPOTIFY|DISNEY|CRAVE|APPLE\.COM|YOUTUBE\s*PREMIUM|AUDIBLE/i, category: /stream/i },
+
+  { pattern: /FIZZ|VIRGIN PLUS|KOODO|ROGERS|TELUS|BELL MOBIL|PUBLIC MOBILE|CHATR/i, category: /^cell$/i },
+  { pattern: /VIDEOTRON|BELL CANADA|EBOX|TEKSAVVY|OXIO|COLBA/i, category: /wifi|internet/i },
+  { pattern: /HYDRO|ENERGIR/i, category: /^hydro$/i },
+
+  { pattern: /UBER\s*TRIP|UBER\s*\*|LYFT|TAXI|TEO TAXI|EVA TAXI/i, category: /^uber$/i },
+  { pattern: /STM|EXO|BIXI|VIA RAIL|COMMUNAUTO|OPUS|AMT\b/i, category: /transit/i },
+
+  { pattern: /GYM|ECONOFITNESS|NAUTILUS|YMCA|CLIMBING|BLOC|TENNIS|SQUASH|PISCINE|CROSSFIT/i, category: /gym|tennis/i },
+  { pattern: /BARBIER|BARBER|SALON|COIFFURE|AVEDA|SPA\b|PHARMAPRIX|JEAN COUTU|UNIPRIX|PHARMACIE/i, category: /haircut|personal/i },
+  { pattern: /SIMONS|WINNERS|UNIQLO|ZARA|H&M|ARITZIA|FRANK\s*\+?\s*OAK|SPORTS EXPERTS/i, category: /cloth/i },
+
+  { pattern: /SAQ|LCBO|CINEMA|CINEPLEX|THEATRE|SPECTACLE|STEAMGAMES|NINTENDO|PLAYSTATION|MUSEE|BILLETTERIE|EVENTBRITE/i, category: /fun activities/i },
+
+  { pattern: /MANITOBA|WINNIPEG/i, category: /manitoba/i },
+  { pattern: /AIR CANADA|PORTER|WESTJET|AIRBNB|HOTEL|EXPEDIA|FLAIR|BOOKING\.COM|VIA RAIL CANADA/i, category: /^travel$/i },
 ];
 
 export function heuristicAssignments(
@@ -41,12 +57,13 @@ export function heuristicAssignments(
   for (const merchant of merchants) {
     let assigned: string | null = null;
     for (const h of HEURISTICS) {
-      if (h.pattern.test(merchant)) {
-        const category = categories.find((c) => h.category.test(c.name));
-        if (category) {
-          assigned = category.id;
-          break;
-        }
+      if (!h.pattern.test(merchant)) continue;
+      const category = categories.find((c) => h.category.test(c.name));
+      // No category matches this rule's target in the household's plan — keep
+      // looking; a later, broader rule may fit.
+      if (category) {
+        assigned = category.id;
+        break;
       }
     }
     out[merchant] = assigned;

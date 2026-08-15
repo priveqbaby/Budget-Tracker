@@ -7,7 +7,9 @@ import type {
   ImportBatchMeta,
   Invite,
   MonthData,
+  MonthNote,
   Source,
+  SourceKind,
   StoredRule,
   Transaction,
 } from "./types";
@@ -47,5 +49,31 @@ export interface DataStore {
   ): Promise<void>;
   setTransactionCategory(id: string, categoryId: string): Promise<Transaction>;
   createInvite(email: string): Promise<Invite>;
-  createSource(label: string): Promise<Source>;
+
+  // --- v2 (PRD v2.1): editable data, real sources, journal ---
+  /** Exclude/include a transaction from spend without touching its category. */
+  setTransactionExcluded(id: string, isExcluded: boolean): Promise<void>;
+  /** Deleting lowers the row's dedup count; re-importing the statement restores it. */
+  deleteTransaction(id: string): Promise<void>;
+  /** Undo an import: removes exactly the transactions the batch inserted. */
+  deleteBatch(batchId: string): Promise<{ removed: number }>;
+  /** Minimal manual entry — cash has no CSV (review amendment 1). */
+  addManualTransaction(input: {
+    sourceId: string;
+    date: string;
+    description: string;
+    amount: number; // cents, spend positive
+    categoryId: string | null;
+  }): Promise<Transaction>;
+
+  createSource(label: string, ownerMemberId?: string, kind?: SourceKind): Promise<Source>;
+  updateSource(
+    id: string,
+    patch: Partial<Pick<Source, "label" | "ownerMemberId" | "kind">>,
+  ): Promise<void>;
+  /** Cascades to the source's transactions and batches — confirmed in UI with counts. */
+  deleteSource(id: string): Promise<{ removedTransactions: number }>;
+
+  getMonthNote(month: string): Promise<MonthNote | null>;
+  saveMonthNote(month: string, body: string): Promise<MonthNote>;
 }

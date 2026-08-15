@@ -17,7 +17,17 @@ export interface Category {
   name: string;
   monthlyCap: number; // cents
   isFixed: boolean;
+  /** The unallocated-surplus line: no meter, no transactions, excluded from totals. */
+  isSurplus: boolean;
   sortOrder: number;
+}
+
+export type SourceKind = "credit_card" | "debit" | "chequing" | "cash" | "other";
+
+export interface MonthNote {
+  month: string; // YYYY-MM
+  body: string;
+  updatedAt: string; // ISO timestamp
 }
 
 export interface MonthCap {
@@ -30,6 +40,7 @@ export interface Source {
   id: string;
   ownerMemberId: string;
   label: string;
+  kind: SourceKind;
   columnMapping: ColumnMapping | null;
 }
 

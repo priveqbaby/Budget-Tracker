@@ -28,6 +28,8 @@ export interface MonthSummary {
   }>;
   totalVariableSpent: number;
   totalVariableCap: number;
+  /** The unallocated-surplus line, if the plan has one (PRD v2 §2.3). */
+  surplus: { cap: number; drawn: number; left: number } | null;
   uncategorized: Transaction[];
   unconfirmedCount: number;
   overCount: number;
@@ -59,15 +61,21 @@ export function summarizeMonth(
   const countable = data.transactions.filter((t) => !t.isExcluded && t.kind !== "payment");
 
   const variable = categories
-    .filter((c) => !c.isFixed)
+    .filter((c) => !c.isFixed && !c.isSurplus)
     .map<CategorySummary>((category) => {
       const txns = countable.filter((t) => t.categoryId === category.id);
       const spent = txns.reduce((sum, t) => sum + t.amount, 0);
       const cap = capOf(category);
       const ratio = cap > 0 ? spent / cap : 0;
       let status: BudgetStatus = "ok";
-      if (ratio >= 1) status = "over";
-      else if (ratio >= 0.8) status = "watch";
+      if (ratio >= 1) {
+        status = "over";
+      } else if (ratio >= 0.8 && txns.length >= 3) {
+        // "Near cap" is a warning about spending that is still happening. A
+        // line whose whole month is one or two bills (Wifi, Cell, Prime) sits
+        // at ~99% by design — flagging it every month is crying wolf.
+        status = "watch";
+      }
       const paceAhead =
         status === "ok" &&
         elapsed > 0 && elapsed < 1 &&
@@ -94,9 +102,24 @@ export function summarizeMonth(
       };
     });
 
-  const totalVariableSpent = variable.reduce((s, v) => s + v.spent, 0);
-  const totalVariableCap = variable.reduce((s, v) => s + v.cap, 0);
   const uncategorized = countable.filter((t) => t.categoryId === null);
+
+  // Uncategorized money is still money spent, so it belongs in the headline —
+  // otherwise filing a transaction into a category would make the total jump.
+  const totalVariableSpent =
+    variable.reduce((s, v) => s + v.spent, 0) +
+    uncategorized.reduce((s, t) => s + t.amount, 0);
+  const totalVariableCap = variable.reduce((s, v) => s + v.cap, 0);
+
+  // Surplus is a display of the manual-draw decision, never an automation:
+  // drawn = the sum of current overages across variable categories.
+  const surplusCategory = categories.find((c) => c.isSurplus);
+  const surplusCap = surplusCategory ? capOf(surplusCategory) : 0;
+  const drawn = variable.reduce((s, v) => s + Math.max(0, v.spent - v.cap), 0);
+  const surplus = surplusCategory
+    ? { cap: surplusCap, drawn, left: surplusCap - drawn }
+    : null;
+
   const unconfirmedCount = countable.filter((t) => !t.isConfirmed).length;
 
   const overCount = variable.filter((v) => v.status === "over").length;
@@ -132,6 +155,7 @@ export function summarizeMonth(
     fixed,
     totalVariableSpent,
     totalVariableCap,
+    surplus,
     uncategorized,
     unconfirmedCount,
     overCount,

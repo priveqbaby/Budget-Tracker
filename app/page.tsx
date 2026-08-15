@@ -3,9 +3,12 @@ import { getStore, isDemoMode } from "@/lib/data";
 import { DEMO_TODAY } from "@/lib/data/demo-seed";
 import { summarizeMonth } from "@/lib/budget";
 import { formatCents, formatCentsWhole, monthLabel } from "@/lib/money";
-import { CategoryRows, type CategoryRowDto } from "@/components/category-rows";
+import { CategoryRows, type CategoryRowDto, type TxnDto } from "@/components/category-rows";
 import { FixedChecklist } from "@/components/fixed-checklist";
 import { HistoryChart, type HistoryPointDto } from "@/components/history-chart";
+import { SurplusStrip } from "@/components/surplus-strip";
+import { MonthJournal } from "@/components/month-journal";
+import { UncategorizedRow } from "@/components/uncategorized-row";
 
 export default async function Dashboard({
   searchParams,
@@ -29,6 +32,8 @@ export default async function Dashboard({
 
   const data = await store.getMonthData(month);
   const s = summarizeMonth(data, categories, todayIso);
+  const note = await store.getMonthNote(month);
+  const surplusCategory = categories.find((c) => c.isSurplus);
 
   // History across every retained month (goal 4: is food drifting up?).
   const history: HistoryPointDto[] = [];
@@ -46,6 +51,19 @@ export default async function Dashboard({
     if (food) foodByMonth.set(hm, food.spent);
   }
 
+  const toDto = (t: (typeof data.transactions)[number]): TxnDto => ({
+    id: t.id,
+    date: t.date,
+    description: t.description,
+    merchantNormalized: t.merchantNormalized,
+    amount: t.amount,
+    kind: t.kind,
+    ownerId: t.ownerMemberId,
+    isConfirmed: t.isConfirmed,
+    isExcluded: t.isExcluded,
+    categoryId: t.categoryId,
+  });
+
   const activeRows = s.variable.filter((v) => v.spent !== 0 || v.cap > 0);
   const rows: CategoryRowDto[] = activeRows.map((v) => ({
     id: v.category.id,
@@ -56,17 +74,11 @@ export default async function Dashboard({
     paceAhead: v.paceAhead,
     byMember: v.byMember,
     unconfirmedCount: v.unconfirmedCount,
-    transactions: v.transactions.map((t) => ({
-      id: t.id,
-      date: t.date,
-      description: t.description,
-      merchantNormalized: t.merchantNormalized,
-      amount: t.amount,
-      kind: t.kind,
-      ownerId: t.ownerMemberId,
-      isConfirmed: t.isConfirmed,
-    })),
+    transactions: v.transactions.map(toDto),
   }));
+  const categoryOptions = categories
+    .filter((c) => !c.isFixed && !c.isSurplus)
+    .map((c) => ({ id: c.id, name: c.name }));
 
   const fixedPaid = s.fixed.filter((f) => f.isPaid).length;
   const remaining = s.totalVariableCap - s.totalVariableSpent;
@@ -152,15 +164,29 @@ export default async function Dashboard({
             {isCurrent ? "tick marks where the month stands" : "full month"}
           </span>
         </div>
-        <div className="card overflow-hidden">
+        {/* No overflow-hidden: the per-transaction action menu overflows the card. */}
+        <div className="card">
           <CategoryRows
             rows={rows}
             members={household.members}
-            categories={categories.filter((c) => !c.isFixed).map((c) => ({ id: c.id, name: c.name }))}
+            categories={categoryOptions}
             elapsedFraction={isCurrent ? s.elapsedFraction : 1}
+          />
+          <UncategorizedRow
+            transactions={s.uncategorized.map(toDto)}
+            categories={categoryOptions}
           />
         </div>
       </section>
+
+      {s.surplus && surplusCategory && (
+        <SurplusStrip
+          name={surplusCategory.name}
+          cap={s.surplus.cap}
+          drawn={s.surplus.drawn}
+          left={s.surplus.left}
+        />
+      )}
 
       {/* Fixed + history side by side */}
       <div className="mt-8 grid gap-8 lg:grid-cols-[380px_minmax(0,1fr)]">
@@ -187,6 +213,12 @@ export default async function Dashboard({
           </div>
         </section>
       </div>
+
+      <MonthJournal
+        month={month}
+        initialBody={note?.body ?? ""}
+        initialUpdatedAt={note?.updatedAt ?? null}
+      />
 
       <footer className="mt-10 pb-4 text-center text-[12px] text-ink-muted">
         Refunds count against their category · card payments are excluded from spend

@@ -4,8 +4,10 @@ import type { ColumnMapping } from "@/lib/import/types";
 import type { DataStore } from "./store";
 import type {
   Category, CommitRow, FixedPayment, Household, ImportBatchMeta, Invite,
-  MonthCap, MonthData, Source, StoredRule, Transaction,
+  MonthCap, MonthData, MonthNote, Source, SourceKind, StoredRule, Transaction,
 } from "./types";
+import { dedupHashOf } from "@/lib/import/parse";
+import { normalizeMerchant } from "@/lib/import/normalize";
 
 export class NotSignedInError extends Error {}
 export class NoHouseholdError extends Error {}
@@ -52,7 +54,7 @@ export class SupabaseStore implements DataStore {
     if (error) throw error;
     return data.map((c) => ({
       id: c.id, name: c.name, monthlyCap: c.monthly_cap,
-      isFixed: c.is_fixed, sortOrder: c.sort_order,
+      isFixed: c.is_fixed, isSurplus: c.is_surplus ?? false, sortOrder: c.sort_order,
     }));
   }
 
@@ -62,6 +64,7 @@ export class SupabaseStore implements DataStore {
     if (error) throw error;
     return data.map((s) => ({
       id: s.id, ownerMemberId: s.owner_member_id, label: s.label,
+      kind: (s.kind ?? "credit_card") as SourceKind,
       columnMapping: s.column_mapping as ColumnMapping | null,
     }));
   }
@@ -254,18 +257,129 @@ export class SupabaseStore implements DataStore {
     return { id: data.id, email: data.email, role: data.role, acceptedAt: data.accepted_at };
   }
 
-  async createSource(label: string): Promise<Source> {
+  async createSource(label: string, ownerMemberId?: string, kind?: SourceKind): Promise<Source> {
     const { data: auth } = await this.supabase.auth.getUser();
     if (!auth.user) throw new NotSignedInError();
     const { data, error } = await this.supabase
       .from("sources")
-      .insert({ ...this.hh(), owner_member_id: auth.user.id, label })
+      .insert({
+        ...this.hh(),
+        owner_member_id: ownerMemberId ?? auth.user.id,
+        label,
+        kind: kind ?? "credit_card",
+      })
       .select("*").single();
     if (error) throw error;
     return {
       id: data.id, ownerMemberId: data.owner_member_id, label: data.label,
-      columnMapping: data.column_mapping,
+      kind: data.kind, columnMapping: data.column_mapping,
     };
+  }
+
+  async setTransactionExcluded(id: string, isExcluded: boolean): Promise<void> {
+    const { error } = await this.supabase
+      .from("transactions").update({ is_excluded: isExcluded }).eq("id", id);
+    if (error) throw error;
+  }
+
+  async deleteTransaction(id: string): Promise<void> {
+    const { error } = await this.supabase.from("transactions").delete().eq("id", id);
+    if (error) throw error;
+  }
+
+  async deleteBatch(batchId: string): Promise<{ removed: number }> {
+    const { count, error } = await this.supabase
+      .from("transactions").delete({ count: "exact" }).eq("import_batch_id", batchId);
+    if (error) throw error;
+    const { error: batchError } = await this.supabase
+      .from("import_batches").delete().eq("id", batchId);
+    if (batchError) throw batchError;
+    return { removed: count ?? 0 };
+  }
+
+  async addManualTransaction(input: {
+    sourceId: string;
+    date: string;
+    description: string;
+    amount: number;
+    categoryId: string | null;
+  }): Promise<Transaction> {
+    const { data: source, error: srcError } = await this.supabase
+      .from("sources").select("owner_member_id").eq("id", input.sourceId).single();
+    if (srcError) throw srcError;
+    const merchantNormalized = normalizeMerchant(input.description);
+    const { data, error } = await this.supabase
+      .from("transactions")
+      .insert({
+        ...this.hh(),
+        source_id: input.sourceId,
+        owner_member_id: source.owner_member_id,
+        date: input.date,
+        description: input.description,
+        merchant_normalized: merchantNormalized,
+        amount: input.amount,
+        currency: "CAD",
+        kind: input.amount < 0 ? "refund" : "spend",
+        is_excluded: false,
+        category_id: input.categoryId,
+        is_confirmed: input.categoryId !== null,
+        dedup_hash: dedupHashOf(input.date, input.amount, merchantNormalized),
+      })
+      .select("*").single();
+    if (error) throw error;
+    return txnFromRow(data);
+  }
+
+  async updateSource(
+    id: string,
+    patch: Partial<Pick<Source, "label" | "ownerMemberId" | "kind">>,
+  ): Promise<void> {
+    const { error } = await this.supabase
+      .from("sources")
+      .update({
+        ...(patch.label !== undefined && { label: patch.label }),
+        ...(patch.ownerMemberId !== undefined && { owner_member_id: patch.ownerMemberId }),
+        ...(patch.kind !== undefined && { kind: patch.kind }),
+      })
+      .eq("id", id);
+    if (error) throw error;
+    if (patch.ownerMemberId) {
+      const { error: txnError } = await this.supabase
+        .from("transactions")
+        .update({ owner_member_id: patch.ownerMemberId })
+        .eq("source_id", id);
+      if (txnError) throw txnError;
+    }
+  }
+
+  async deleteSource(id: string): Promise<{ removedTransactions: number }> {
+    const { count } = await this.supabase
+      .from("transactions").select("id", { count: "exact", head: true }).eq("source_id", id);
+    // Cascades in the schema remove transactions and batches with the source.
+    const { error } = await this.supabase.from("sources").delete().eq("id", id);
+    if (error) throw error;
+    return { removedTransactions: count ?? 0 };
+  }
+
+  async getMonthNote(month: string): Promise<MonthNote | null> {
+    const { data, error } = await this.supabase
+      .from("month_notes").select("*")
+      .eq("household_id", this.householdId).eq("month", month).maybeSingle();
+    if (error) throw error;
+    return data ? { month: data.month, body: data.body, updatedAt: data.updated_at } : null;
+  }
+
+  async saveMonthNote(month: string, body: string): Promise<MonthNote> {
+    const updatedAt = new Date().toISOString();
+    const { data, error } = await this.supabase
+      .from("month_notes")
+      .upsert(
+        { ...this.hh(), month, body, updated_at: updatedAt },
+        { onConflict: "household_id,month" },
+      )
+      .select("*").single();
+    if (error) throw error;
+    return { month: data.month, body: data.body, updatedAt: data.updated_at };
   }
 }
 

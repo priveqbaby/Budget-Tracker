@@ -1,8 +1,10 @@
+import { dedupHashOf } from "@/lib/import/parse";
+import { normalizeMerchant } from "@/lib/import/normalize";
 import type { ColumnMapping } from "@/lib/import/types";
 import type { DataStore } from "./store";
 import type {
   Category, CommitRow, FixedPayment, Household, ImportBatchMeta, Invite,
-  MonthCap, MonthData, Source, StoredRule, Transaction,
+  MonthCap, MonthData, MonthNote, Source, SourceKind, StoredRule, Transaction,
 } from "./types";
 import { buildSeed, categories as seedCategories, members, sources as seedSources } from "./demo-seed";
 
@@ -15,6 +17,7 @@ interface DemoDb {
   rules: StoredRule[];
   importBatches: ImportBatchMeta[];
   invites: Invite[];
+  monthNotes: MonthNote[];
   counter: number;
 }
 
@@ -187,15 +190,107 @@ export class DemoStore implements DataStore {
     return invite;
   }
 
-  async createSource(label: string): Promise<Source> {
+  async createSource(label: string, ownerMemberId?: string, kind?: SourceKind): Promise<Source> {
     const d = db();
     const source: Source = {
       id: `src-${++d.counter}`,
-      ownerMemberId: members[0].id,
+      ownerMemberId: ownerMemberId ?? members[0].id,
       label,
+      kind: kind ?? "credit_card",
       columnMapping: null,
     };
     d.sources.push(source);
     return source;
+  }
+
+  async setTransactionExcluded(id: string, isExcluded: boolean): Promise<void> {
+    const t = db().transactions.find((t) => t.id === id);
+    if (t) t.isExcluded = isExcluded;
+  }
+
+  async deleteTransaction(id: string): Promise<void> {
+    const d = db();
+    d.transactions = d.transactions.filter((t) => t.id !== id);
+  }
+
+  async deleteBatch(batchId: string): Promise<{ removed: number }> {
+    const d = db();
+    const before = d.transactions.length;
+    d.transactions = d.transactions.filter((t) => t.importBatchId !== batchId);
+    d.importBatches = d.importBatches.filter((b) => b.id !== batchId);
+    return { removed: before - d.transactions.length };
+  }
+
+  async addManualTransaction(input: {
+    sourceId: string;
+    date: string;
+    description: string;
+    amount: number;
+    categoryId: string | null;
+  }): Promise<Transaction> {
+    const d = db();
+    const source = d.sources.find((s) => s.id === input.sourceId);
+    if (!source) throw new Error(`Unknown source ${input.sourceId}`);
+    const merchantNormalized = normalizeMerchant(input.description);
+    const txn: Transaction = {
+      id: `tx-${++d.counter}`,
+      sourceId: input.sourceId,
+      ownerMemberId: source.ownerMemberId,
+      date: input.date,
+      description: input.description,
+      merchantNormalized,
+      amount: input.amount,
+      currency: "CAD",
+      kind: input.amount < 0 ? "refund" : "spend",
+      isExcluded: false,
+      categoryId: input.categoryId,
+      isConfirmed: input.categoryId !== null,
+      dedupHash: dedupHashOf(input.date, input.amount, merchantNormalized),
+      importBatchId: null,
+    };
+    d.transactions.push(txn);
+    return txn;
+  }
+
+  async updateSource(
+    id: string,
+    patch: Partial<Pick<Source, "label" | "ownerMemberId" | "kind">>,
+  ): Promise<void> {
+    const source = db().sources.find((s) => s.id === id);
+    if (source) Object.assign(source, patch);
+    // Transactions carry their owner; a source owner change applies forward
+    // and to existing rows so the split stays truthful.
+    if (patch.ownerMemberId) {
+      for (const t of db().transactions) {
+        if (t.sourceId === id) t.ownerMemberId = patch.ownerMemberId;
+      }
+    }
+  }
+
+  async deleteSource(id: string): Promise<{ removedTransactions: number }> {
+    const d = db();
+    const before = d.transactions.length;
+    d.transactions = d.transactions.filter((t) => t.sourceId !== id);
+    d.importBatches = d.importBatches.filter((b) => b.sourceId !== id);
+    d.sources = d.sources.filter((s) => s.id !== id);
+    return { removedTransactions: before - d.transactions.length };
+  }
+
+  async getMonthNote(month: string): Promise<MonthNote | null> {
+    return db().monthNotes.find((n) => n.month === month) ?? null;
+  }
+
+  async saveMonthNote(month: string, body: string): Promise<MonthNote> {
+    const d = db();
+    const existing = d.monthNotes.find((n) => n.month === month);
+    const updatedAt = new Date().toISOString();
+    if (existing) {
+      existing.body = body;
+      existing.updatedAt = updatedAt;
+      return existing;
+    }
+    const note: MonthNote = { month, body, updatedAt };
+    d.monthNotes.push(note);
+    return note;
   }
 }

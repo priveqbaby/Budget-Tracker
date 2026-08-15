@@ -153,17 +153,59 @@ describe("merchant rules", () => {
 });
 
 describe("heuristic fallback (demo mode / no API key)", () => {
-  it("classifies obvious Montreal merchants", () => {
-    const categories = [
-      { id: "g", name: "Groceries" },
-      { id: "r", name: "Restaurants" },
-      { id: "t", name: "Transit" },
-    ];
-    const out = heuristicAssignments(["IGA", "CAFE OLIMPICO", "STM", "MYSTERY SHOP"], categories);
-    expect(out["IGA"]).toBe("g");
-    expect(out["CAFE OLIMPICO"]).toBe("r");
-    expect(out["STM"]).toBe("t");
+  // The Sankey lines (PRD v2 §2.3), abbreviated to what these cases need.
+  const sankey = [
+    { id: "food", name: "Food" },
+    { id: "travel", name: "Travel" },
+    { id: "gym", name: "Gym & tennis" },
+    { id: "fun", name: "Fun activities" },
+    { id: "transit", name: "Transit" },
+    { id: "personal", name: "Haircut & personal" },
+    { id: "manitoba", name: "Travel to Manitoba" },
+    { id: "cell", name: "Cell" },
+    { id: "uber", name: "Uber" },
+    { id: "hydro", name: "Hydro" },
+    { id: "wifi", name: "Wifi" },
+    { id: "streaming", name: "Streaming" },
+    { id: "prime", name: "Amazon Prime" },
+  ];
+
+  it("classifies obvious Montreal merchants onto the Sankey lines", () => {
+    const out = heuristicAssignments(
+      ["IGA", "CAFE OLIMPICO", "STM", "HYDRO QUEBEC", "VIDEOTRON LTEE", "MYSTERY SHOP"],
+      sankey,
+    );
+    expect(out["IGA"]).toBe("food");
+    expect(out["CAFE OLIMPICO"]).toBe("food");
+    expect(out["STM"]).toBe("transit");
+    expect(out["HYDRO QUEBEC"]).toBe("hydro");
+    expect(out["VIDEOTRON LTEE"]).toBe("wifi");
     expect(out["MYSTERY SHOP"]).toBeNull();
+  });
+
+  it("separates lines that share a word (Uber vs Uber Eats, Transit vs Uber)", () => {
+    const out = heuristicAssignments(["UBER EATS", "UBER TRIP", "BIXI MONTREAL"], sankey);
+    expect(out["UBER EATS"]).toBe("food");
+    expect(out["UBER TRIP"]).toBe("uber");
+    expect(out["BIXI MONTREAL"]).toBe("transit");
+  });
+
+  it("prefers the specific line over the general one", () => {
+    const out = heuristicAssignments(
+      ["AMAZON PRIME MEMBER", "NETFLIX.COM", "PORTER AIRLINES", "WINNIPEG HOTEL"],
+      sankey,
+    );
+    expect(out["AMAZON PRIME MEMBER"]).toBe("prime");
+    expect(out["NETFLIX.COM"]).toBe("streaming");
+    expect(out["PORTER AIRLINES"]).toBe("travel");
+    expect(out["WINNIPEG HOTEL"]).toBe("manitoba");
+  });
+
+  it("leaves a merchant with no matching line uncategorized", () => {
+    // The Sankey has no household-goods line, so these must not be forced.
+    const out = heuristicAssignments(["CANADIAN TIRE", "AMAZON.CA"], sankey);
+    expect(out["CANADIAN TIRE"]).toBeNull();
+    expect(out["AMAZON.CA"]).toBeNull();
   });
 });
 

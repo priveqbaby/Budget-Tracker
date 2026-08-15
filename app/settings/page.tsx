@@ -2,18 +2,30 @@ import { getStore } from "@/lib/data";
 import { formatCentsWhole } from "@/lib/money";
 import { CapEditor } from "@/components/cap-editor";
 import { InviteForm } from "@/components/invite-form";
+import { SourceManager } from "@/components/source-manager";
 
 export default async function SettingsPage() {
   const store = await getStore();
-  const [household, categories, sources, invites] = await Promise.all([
+  const [household, categories, sources, invites, months] = await Promise.all([
     store.getHousehold(),
     store.listCategories(),
     store.listSources(),
     store.listInvites(),
+    store.listMonths(),
   ]);
 
-  const variable = categories.filter((c) => !c.isFixed);
+  // Counts make the delete confirmation state its blast radius (PRD v2 §2.1).
+  const txnCountBySource = new Map<string, number>();
+  for (const m of months) {
+    const data = await store.getMonthData(m);
+    for (const t of data.transactions) {
+      txnCountBySource.set(t.sourceId, (txnCountBySource.get(t.sourceId) ?? 0) + 1);
+    }
+  }
+
+  const variable = categories.filter((c) => !c.isFixed && !c.isSurplus);
   const fixed = categories.filter((c) => c.isFixed);
+  const surplus = categories.filter((c) => c.isSurplus);
   const totalCap = categories.reduce((s, c) => s + c.monthlyCap, 0);
 
   return (
@@ -45,10 +57,20 @@ export default async function SettingsPage() {
           {variable.map((c) => (
             <CapEditor key={c.id} id={c.id} name={c.name} capCents={c.monthlyCap} />
           ))}
+          {surplus.length > 0 && (
+            <>
+              <div className="border-y border-hairline bg-sunken/60 px-5 py-2 text-[11.5px] font-semibold uppercase tracking-wider text-ink-muted">
+                Surplus — never receives transactions
+              </div>
+              {surplus.map((c) => (
+                <CapEditor key={c.id} id={c.id} name={c.name} capCents={c.monthlyCap} />
+              ))}
+            </>
+          )}
         </div>
         <p className="mt-2.5 px-1 text-[12px] text-ink-muted">
-          Open question 4 from the PRD still stands: check whether Travel — general
-          double-counts Travel — Manitoba before trusting the seeded caps.
+          These are the Sankey lines. Renaming or recapping a line applies from this month
+          forward; past months keep the caps they were measured against.
         </p>
       </section>
 
@@ -86,19 +108,23 @@ export default async function SettingsPage() {
         </section>
 
         <section className="settle settle-3">
-          <h2 className="overline mb-2.5 px-1">Statement sources</h2>
-          <div className="card divide-y divide-hairline overflow-hidden">
-            {sources.map((s) => (
-              <div key={s.id} className="px-5 py-3">
-                <div className="text-[14px] font-medium text-ink">{s.label}</div>
-                <div className="mt-0.5 text-[12px] text-ink-muted">
-                  {s.columnMapping
-                    ? `columns remembered · ${s.columnMapping.sign === "charges_positive" ? "charges positive" : "debits negative"}`
-                    : "mapping will be learned on first import"}
-                </div>
-              </div>
-            ))}
-          </div>
+          <h2 className="overline mb-2.5 px-1">Cards &amp; accounts</h2>
+          <SourceManager
+            members={household.members.map((m) => ({ id: m.id, displayName: m.displayName }))}
+            sources={sources.map((s) => ({
+              id: s.id,
+              label: s.label,
+              ownerMemberId: s.ownerMemberId,
+              kind: s.kind,
+              hasMapping: s.columnMapping !== null,
+              signLabel: s.columnMapping
+                ? s.columnMapping.sign === "charges_positive"
+                  ? "charges positive"
+                  : "debits negative"
+                : null,
+              transactionCount: txnCountBySource.get(s.id) ?? 0,
+            }))}
+          />
         </section>
       </div>
     </div>

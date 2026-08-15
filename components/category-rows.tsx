@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { formatCents, formatCentsWhole, dayLabel } from "@/lib/money";
-import { recategorizeTransaction } from "@/app/actions";
+import { TxnActions } from "./txn-actions";
 
 export interface TxnDto {
   id: string;
@@ -13,6 +13,8 @@ export interface TxnDto {
   kind: "spend" | "refund" | "payment";
   ownerId: string;
   isConfirmed: boolean;
+  isExcluded: boolean;
+  categoryId: string | null;
 }
 
 export interface CategoryRowDto {
@@ -136,8 +138,13 @@ export function CategoryRows({
                           {t.kind === "refund" && (
                             <span className="ml-2 text-[11px] font-semibold text-ok">refund</span>
                           )}
+                          {t.isExcluded && (
+                            <span className="ml-2 text-[11px] font-semibold text-ink-muted">excluded</span>
+                          )}
                           {!t.isConfirmed && (
-                            <ReviewSelect txnId={t.id} categories={categories} />
+                            <span className="ml-2 rounded-full bg-ember-wash px-2 py-[1px] text-[10.5px] font-semibold text-ember-deep">
+                              review
+                            </span>
                           )}
                         </td>
                         <td className="w-[30px] py-[7px] pr-3">
@@ -151,6 +158,14 @@ export function CategoryRows({
                         </td>
                         <td className="money w-[90px] py-[7px] text-right text-ink">
                           {formatCents(t.amount)}
+                        </td>
+                        <td className="w-[34px] py-[7px] pl-2 pr-0 text-right">
+                          <TxnActions
+                            txnId={t.id}
+                            categoryId={t.categoryId}
+                            isExcluded={t.isExcluded}
+                            categories={categories}
+                          />
                         </td>
                       </tr>
                     ))}
@@ -207,43 +222,5 @@ function MemberSplit({
         ))}
       </div>
     </div>
-  );
-}
-
-function ReviewSelect({
-  txnId,
-  categories,
-}: {
-  txnId: string;
-  categories: { id: string; name: string }[];
-}) {
-  const [pending, startTransition] = useTransition();
-  const [done, setDone] = useState(false);
-  if (done) return <span className="ml-2 text-[11px] font-semibold text-ok">saved ✓</span>;
-  return (
-    <span className="ml-2 inline-flex items-center gap-1.5">
-      <span className="rounded-full bg-ember-wash px-2 py-[1px] text-[10.5px] font-semibold text-ember-deep">
-        review
-      </span>
-      <select
-        disabled={pending}
-        defaultValue=""
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => {
-          const categoryId = e.target.value;
-          if (!categoryId) return;
-          startTransition(async () => {
-            await recategorizeTransaction(txnId, categoryId);
-            setDone(true);
-          });
-        }}
-        className="rounded-md border border-hairline-deep bg-surface px-1.5 py-[2px] text-[11px] text-ink-secondary"
-      >
-        <option value="">confirm as…</option>
-        {categories.map((c) => (
-          <option key={c.id} value={c.id}>{c.name}</option>
-        ))}
-      </select>
-    </span>
   );
 }

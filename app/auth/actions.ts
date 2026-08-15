@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getStore, isDemoMode } from "@/lib/data";
 import { DEFAULT_CATEGORIES } from "@/lib/data/default-categories";
+import type { SourceKind } from "@/lib/data/types";
 
 /** Derived server-side — never trust a caller-supplied origin in an email redirect. */
 async function requestOrigin(): Promise<string> {
@@ -87,9 +88,13 @@ export async function acceptInvite(inviteId: string, displayName: string) {
   redirect("/");
 }
 
-export async function addSource(label: string) {
+export async function addSource(
+  label: string,
+  ownerMemberId?: string,
+  kind?: SourceKind,
+) {
   const store = await getStore();
-  await store.createSource(label.trim());
+  await store.createSource(label.trim(), ownerMemberId, kind);
   revalidatePath("/import");
   revalidatePath("/settings");
 }
