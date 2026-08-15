@@ -24,7 +24,12 @@ export function ManualEntry({
   const [pending, startTransition] = useTransition();
 
   const cents = parseAmountToCents(amount);
-  const valid = sourceId && description.trim() && !Number.isNaN(cents) && cents !== 0;
+  const valid =
+    Boolean(sourceId) &&
+    /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+    Boolean(description.trim()) &&
+    !Number.isNaN(cents) &&
+    cents !== 0;
 
   if (!open) {
     return (

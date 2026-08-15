@@ -61,6 +61,14 @@ export async function updateSource(
   patch: { label?: string; ownerMemberId?: string; kind?: SourceKind },
 ) {
   const store = await getStore();
+  if (patch.ownerMemberId) {
+    // Client-supplied: must be a member of this household, since the owner is
+    // propagated onto every transaction from this source.
+    const household = await store.getHousehold();
+    if (!household.members.some((m) => m.id === patch.ownerMemberId)) {
+      throw new Error("That person is not in this household");
+    }
+  }
   await store.updateSource(id, patch);
   revalidatePath("/settings");
   revalidatePath("/import");
@@ -162,7 +170,9 @@ export async function previewImport(
 
   const assignments = await classifyMerchants(
     preview.unknownMerchants,
-    categories.filter((c) => !c.isFixed).map((c) => ({ id: c.id, name: c.name })),
+    // Surplus never receives transactions — spend assigned there would vanish
+    // from every total (PRD v2 §2.3).
+    categories.filter((c) => !c.isFixed && !c.isSurplus).map((c) => ({ id: c.id, name: c.name })),
   );
 
   let claudeAssignedCount = 0;

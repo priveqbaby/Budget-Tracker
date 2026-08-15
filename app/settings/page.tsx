@@ -6,22 +6,14 @@ import { SourceManager } from "@/components/source-manager";
 
 export default async function SettingsPage() {
   const store = await getStore();
-  const [household, categories, sources, invites, months] = await Promise.all([
+  // Counts make the delete confirmation state its blast radius (PRD v2 §2.1).
+  const [household, categories, sources, invites, txnCountBySource] = await Promise.all([
     store.getHousehold(),
     store.listCategories(),
     store.listSources(),
     store.listInvites(),
-    store.listMonths(),
+    store.getSourceTransactionCounts(),
   ]);
-
-  // Counts make the delete confirmation state its blast radius (PRD v2 §2.1).
-  const txnCountBySource = new Map<string, number>();
-  for (const m of months) {
-    const data = await store.getMonthData(m);
-    for (const t of data.transactions) {
-      txnCountBySource.set(t.sourceId, (txnCountBySource.get(t.sourceId) ?? 0) + 1);
-    }
-  }
 
   const variable = categories.filter((c) => !c.isFixed && !c.isSurplus);
   const fixed = categories.filter((c) => c.isFixed);

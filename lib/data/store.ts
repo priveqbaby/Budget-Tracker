@@ -66,6 +66,8 @@ export interface DataStore {
     categoryId: string | null;
   }): Promise<Transaction>;
 
+  /** source_id -> transaction count, for delete confirmations. */
+  getSourceTransactionCounts(): Promise<Map<string, number>>;
   createSource(label: string, ownerMemberId?: string, kind?: SourceKind): Promise<Source>;
   updateSource(
     id: string,

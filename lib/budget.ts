@@ -115,7 +115,12 @@ export function summarizeMonth(
   // drawn = the sum of current overages across variable categories.
   const surplusCategory = categories.find((c) => c.isSurplus);
   const surplusCap = surplusCategory ? capOf(surplusCategory) : 0;
-  const drawn = variable.reduce((s, v) => s + Math.max(0, v.spent - v.cap), 0);
+  // Only capped lines can be "over" — a zero-cap line reads as ok everywhere
+  // else, so counting it here would drain the surplus invisibly.
+  const drawn = variable.reduce(
+    (s, v) => s + (v.cap > 0 ? Math.max(0, v.spent - v.cap) : 0),
+    0,
+  );
   const surplus = surplusCategory
     ? { cap: surplusCap, drawn, left: surplusCap - drawn }
     : null;

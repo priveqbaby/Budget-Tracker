@@ -190,6 +190,14 @@ export class DemoStore implements DataStore {
     return invite;
   }
 
+  async getSourceTransactionCounts(): Promise<Map<string, number>> {
+    const counts = new Map<string, number>();
+    for (const t of db().transactions) {
+      counts.set(t.sourceId, (counts.get(t.sourceId) ?? 0) + 1);
+    }
+    return counts;
+  }
+
   async createSource(label: string, ownerMemberId?: string, kind?: SourceKind): Promise<Source> {
     const d = db();
     const source: Source = {

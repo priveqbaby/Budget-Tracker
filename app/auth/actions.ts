@@ -94,7 +94,23 @@ export async function addSource(
   kind?: SourceKind,
 ) {
   const store = await getStore();
-  await store.createSource(label.trim(), ownerMemberId, kind);
+  await store.createSource(label.trim(), await assertMember(store, ownerMemberId), kind);
   revalidatePath("/import");
   revalidatePath("/settings");
+}
+
+/**
+ * The owner is client-supplied, so it must be one of this household's members —
+ * never an arbitrary user id. Returns undefined to let the store default.
+ */
+async function assertMember(
+  store: Awaited<ReturnType<typeof getStore>>,
+  memberId?: string,
+): Promise<string | undefined> {
+  if (!memberId) return undefined;
+  const household = await store.getHousehold();
+  if (!household.members.some((m) => m.id === memberId)) {
+    throw new Error("That person is not in this household");
+  }
+  return memberId;
 }

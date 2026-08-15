@@ -49,6 +49,8 @@ export function TxnActions({
     };
   }, [open]);
 
+  const current = categories.find((c) => c.id === categoryId) ?? null;
+
   const run = (fn: () => Promise<unknown>) =>
     startTransition(async () => {
       await fn();
@@ -84,13 +86,18 @@ export function TxnActions({
           <label className="block px-2 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
             Move to category
           </label>
+          {/* Always starts on the placeholder: picking the category a row is
+              already in must still fire onChange, so a correct guess can be
+              confirmed. */}
           <select
-            defaultValue={categoryId ?? ""}
+            value=""
             disabled={pending}
             onChange={(e) => e.target.value && run(() => recategorizeTransaction(txnId, e.target.value))}
             className="field !py-1.5 text-[13px]"
           >
-            <option value="">Pick a category…</option>
+            <option value="">
+              {current ? `In ${current.name} — move or confirm…` : "Pick a category…"}
+            </option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}

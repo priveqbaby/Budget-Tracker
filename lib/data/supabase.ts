@@ -257,6 +257,15 @@ export class SupabaseStore implements DataStore {
     return { id: data.id, email: data.email, role: data.role, acceptedAt: data.accepted_at };
   }
 
+  async getSourceTransactionCounts(): Promise<Map<string, number>> {
+    const { data, error } = await this.supabase
+      .from("transactions").select("source_id").eq("household_id", this.householdId);
+    if (error) throw error;
+    const counts = new Map<string, number>();
+    for (const r of data) counts.set(r.source_id, (counts.get(r.source_id) ?? 0) + 1);
+    return counts;
+  }
+
   async createSource(label: string, ownerMemberId?: string, kind?: SourceKind): Promise<Source> {
     const { data: auth } = await this.supabase.auth.getUser();
     if (!auth.user) throw new NotSignedInError();

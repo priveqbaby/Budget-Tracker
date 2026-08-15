@@ -19,9 +19,14 @@ export function MonthJournal({
   const [saving, setSaving] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dirty = useRef(false);
+  const loadedMonth = useRef(month);
 
-  // Reset when the month selector moves.
+  // Reload only when the month selector actually moves. Keying this on the
+  // server-sent body would also fire after every autosave revalidation, which
+  // would overwrite whatever was typed during the save round-trip.
   useEffect(() => {
+    if (loadedMonth.current === month) return;
+    loadedMonth.current = month;
     setBody(initialBody);
     setSavedAt(initialUpdatedAt);
     dirty.current = false;
