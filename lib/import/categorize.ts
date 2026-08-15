@@ -20,7 +20,8 @@ export type MerchantAssignments = Record<string, string | null>; // merchant -> 
 /**
  * Merchant → category guesses, aimed at the Sankey line names (PRD v2 §2.3).
  * Order matters: the most specific pattern wins, so "AMAZON PRIME MEMBER" is
- * caught before the generic Amazon rule, and "UBER EATS" before "UBER TRIP".
+ * caught before the generic Amazon rule (both land on Subscriptions now), and
+ * "UBER EATS" before "UBER TRIP".
  * A merchant that matches nothing stays uncategorized rather than guessing —
  * the dashboard's Uncategorized row exists for exactly that.
  */
@@ -29,7 +30,7 @@ const HEURISTICS: Array<{ pattern: RegExp; category: RegExp }> = [
   { pattern: /IGA|METRO|PROVIGO|MAXI|COSTCO WHOLESALE|SUPER C|ADONIS|PA NATURE|MARCHE|BOULANGERIE|PATISSERIE|FROMAGERIE|BOUCHERIE|POISSONNERIE|DEPANNEUR/i, category: /^food$/i },
   { pattern: /RESTAURANT|CAFE|COFFEE|TIM HORTONS|STARBUCKS|MCDONALD|SUSHI|PIZZ|BURGER|BISTRO|BRASSERIE|POULET|RESTO|UBER\s*EATS|DOORDASH|SKIP\s*THE/i, category: /^food$/i },
 
-  { pattern: /AMAZON\s*PRIME|PRIME\s*MEMBER/i, category: /amazon prime/i },
+  { pattern: /AMAZON\s*PRIME|PRIME\s*MEMBER/i, category: /subscription/i },
   { pattern: /NETFLIX|SPOTIFY|DISNEY|CRAVE|YOUTUBE\s*PREMIUM|HBO|PARAMOUNT|APPLE\s*TV/i, category: /stream/i },
   { pattern: /CLAUDE\.AI|ANTHROPIC|OPENAI|CHATGPT|ICLOUD|APPLE\.COM|GOOGLE\s*ONE|DROPBOX|NOTION|FIGMA|GITHUB|NYTIMES|SUBSTACK|PATREON|ADOBE|MICROSOFT\s*365/i, category: /subscription/i },
 

@@ -85,7 +85,7 @@ export default async function Dashboard({
     transactions: v.transactions.map(toDto),
   }));
   const categoryOptions = categories
-    .filter((c) => !c.isFixed && !c.isSurplus)
+    .filter((c) => !c.isSurplus)
     .map((c) => ({ id: c.id, name: c.name }));
 
   const fixedPaid = s.fixed.filter((f) => f.isPaid).length;
@@ -216,6 +216,7 @@ export default async function Dashboard({
                 name: f.category.name,
                 amount: f.amount,
                 isPaid: f.isPaid,
+                spent: f.spent,
               }))}
             />
           </div>
@@ -280,18 +281,13 @@ function MonthArrow({ href, dir }: { href: string | null; dir: "prev" | "next" }
   );
 }
 
+/** The verdict's mood, in one character. The words beside it carry the meaning. */
 function VerdictIcon({ status }: { status: "ok" | "watch" | "over" }) {
-  if (status === "ok") {
-    return (
-      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
-        <path d="m2.5 7 3 3 5-6.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    );
-  }
+  const face = status === "ok" ? "🤑" : status === "watch" ? "👀" : "💸";
   return (
-    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden>
-      <path d="M6.5 1.5v6M6.5 10.4v.6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
+    <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>
+      {face}
+    </span>
   );
 }
 

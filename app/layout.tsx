@@ -15,10 +15,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body>
+        {/* Decoration only — the money faces and the two name bubbles that
+            drift behind the glass. Hidden from assistive tech. */}
         <div className="pond" aria-hidden>
-          <span className="bloom bloom-1" /><span className="bloom bloom-2" />
-          <span className="bloom bloom-3" /><span className="bloom bloom-4" />
-          <span className="bloom bloom-5" />
+          <span className="coin coin-1">🤑</span>
+          <span className="coin coin-2">💸</span>
+          <span className="coin coin-3">💰</span>
+          <span className="coin coin-4">🪙</span>
+          <span className="coin coin-5">🧾</span>
+          <span className="coin coin-6">🤑</span>
+          <span className="namebubble namebubble-leon">Leon</span>
+          <span className="namebubble namebubble-sara">Sara</span>
         </div>
         <div className="mx-auto flex min-h-screen max-w-[1200px] flex-col md:flex-row">
           <MobileTopBar />

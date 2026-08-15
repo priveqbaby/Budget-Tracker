@@ -239,9 +239,11 @@ export async function previewImport(
 
   const assignments = await classifyMerchants(
     preview.unknownMerchants,
-    // Surplus never receives transactions — spend assigned there would vanish
+    // Fixed lines are offered too: recurring bills (Wifi, Hydro, Cell) sit
+    // there now, and their statement rows still need somewhere to land.
+    // Surplus never receives transactions — spend filed there would vanish
     // from every total (PRD v2 §2.3).
-    categories.filter((c) => !c.isFixed && !c.isSurplus).map((c) => ({ id: c.id, name: c.name })),
+    categories.filter((c) => !c.isSurplus).map((c) => ({ id: c.id, name: c.name })),
   );
 
   let claudeAssignedCount = 0;

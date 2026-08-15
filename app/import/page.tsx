@@ -14,7 +14,7 @@ export default async function ImportPage() {
   ]);
 
   const categoryOptions = categories
-    .filter((c) => !c.isFixed && !c.isSurplus)
+    .filter((c) => !c.isSurplus)
     .map((c) => ({ id: c.id, name: c.name }));
   const today = isDemoMode() ? DEMO_TODAY : new Date().toISOString().slice(0, 10);
 

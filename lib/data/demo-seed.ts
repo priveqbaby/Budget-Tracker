@@ -62,25 +62,30 @@ export const sources: Source[] = [
 
 // The 18 Sankey lines (PRD v2 §2.3), caps in cents.
 export const categories: Category[] = [
+  // Fixed — a paid/unpaid checklist. Recurring bills live here: they arrive on
+  // a schedule, so tracking them against a cap tells you nothing new.
   { id: "rent", name: "Rent", monthlyCap: 150000, isFixed: true, isSurplus: false, sortOrder: 0 },
-  { id: "food", name: "Food", monthlyCap: 120000, isFixed: false, isSurplus: false, sortOrder: 1 },
-  { id: "travel", name: "Travel", monthlyCap: 66600, isFixed: false, isSurplus: false, sortOrder: 2 },
-  { id: "gym", name: "Gym & tennis", monthlyCap: 50000, isFixed: false, isSurplus: false, sortOrder: 3 },
-  { id: "debt", name: "Debt payments", monthlyCap: 48800, isFixed: true, isSurplus: false, sortOrder: 4 },
-  { id: "fun", name: "Fun activities", monthlyCap: 30000, isFixed: false, isSurplus: false, sortOrder: 5 },
-  { id: "clothing", name: "Clothing", monthlyCap: 25000, isFixed: false, isSurplus: false, sortOrder: 6 },
-  { id: "transit", name: "Transit", monthlyCap: 20000, isFixed: false, isSurplus: false, sortOrder: 7 },
-  { id: "parents", name: "Transfer to parents", monthlyCap: 20000, isFixed: true, isSurplus: false, sortOrder: 8 },
-  { id: "personal", name: "Haircut & personal", monthlyCap: 20000, isFixed: false, isSurplus: false, sortOrder: 9 },
-  { id: "manitoba", name: "Travel to Manitoba", monthlyCap: 16700, isFixed: false, isSurplus: false, sortOrder: 10 },
-  { id: "cell", name: "Cell", monthlyCap: 12200, isFixed: false, isSurplus: false, sortOrder: 11 },
-  { id: "uber", name: "Uber", monthlyCap: 10000, isFixed: false, isSurplus: false, sortOrder: 12 },
-  { id: "hydro", name: "Hydro", monthlyCap: 8500, isFixed: false, isSurplus: false, sortOrder: 13 },
-  { id: "wifi", name: "Wifi", monthlyCap: 6100, isFixed: false, isSurplus: false, sortOrder: 14 },
-  { id: "streaming", name: "Streaming", monthlyCap: 5000, isFixed: false, isSurplus: false, sortOrder: 15 },
-  { id: "subs", name: "Subscriptions", monthlyCap: 6000, isFixed: false, isSurplus: false, sortOrder: 16 },
-  { id: "prime", name: "Amazon Prime", monthlyCap: 800, isFixed: false, isSurplus: false, sortOrder: 17 },
-  { id: "surplus", name: "Unallocated surplus", monthlyCap: 51900, isFixed: false, isSurplus: true, sortOrder: 18 },
+  { id: "debt", name: "Debt payments", monthlyCap: 48800, isFixed: true, isSurplus: false, sortOrder: 1 },
+  { id: "travel", name: "Travel", monthlyCap: 66600, isFixed: true, isSurplus: false, sortOrder: 2 },
+  { id: "manitoba", name: "Travel to Manitoba", monthlyCap: 16700, isFixed: true, isSurplus: false, sortOrder: 3 },
+  { id: "parents", name: "Transfer to parents", monthlyCap: 15000, isFixed: true, isSurplus: false, sortOrder: 4 },
+  { id: "cell", name: "Cell", monthlyCap: 12200, isFixed: true, isSurplus: false, sortOrder: 5 },
+  { id: "hydro", name: "Hydro", monthlyCap: 8500, isFixed: true, isSurplus: false, sortOrder: 6 },
+  { id: "wifi", name: "Wifi", monthlyCap: 6100, isFixed: true, isSurplus: false, sortOrder: 7 },
+
+  // Variable — the lines that actually move, tracked against their caps.
+  { id: "food", name: "Food", monthlyCap: 120000, isFixed: false, isSurplus: false, sortOrder: 8 },
+  { id: "gym", name: "Gym & tennis", monthlyCap: 50000, isFixed: false, isSurplus: false, sortOrder: 9 },
+  { id: "fun", name: "Fun activities", monthlyCap: 30000, isFixed: false, isSurplus: false, sortOrder: 10 },
+  { id: "clothing", name: "Clothing", monthlyCap: 25000, isFixed: false, isSurplus: false, sortOrder: 11 },
+  { id: "transit", name: "Transit", monthlyCap: 20000, isFixed: false, isSurplus: false, sortOrder: 12 },
+  { id: "personal", name: "Haircut & personal", monthlyCap: 20000, isFixed: false, isSurplus: false, sortOrder: 13 },
+  { id: "uber", name: "Uber", monthlyCap: 10000, isFixed: false, isSurplus: false, sortOrder: 14 },
+  // Amazon Prime folded in here — it was a $8 line of its own.
+  { id: "subs", name: "Subscriptions", monthlyCap: 6800, isFixed: false, isSurplus: false, sortOrder: 15 },
+  { id: "streaming", name: "Streaming", monthlyCap: 5000, isFixed: false, isSurplus: false, sortOrder: 16 },
+
+  { id: "surplus", name: "Unallocated surplus", monthlyCap: 56900, isFixed: false, isSurplus: true, sortOrder: 17 },
 ];
 
 type SourceId = "src-amex" | "src-ws-leon" | "src-ws-sara";
@@ -108,7 +113,7 @@ const recurring: Recur[] = [
   { categoryId: "streaming", merchant: "NETFLIX.COM", source: "src-amex", day: 2, amount: 2099 },
   { categoryId: "streaming", merchant: "SPOTIFY", source: "src-amex", day: 5, amount: 1699 },
   { categoryId: "streaming", merchant: "CRAVE", source: "src-ws-sara", day: 7, amount: 2299 },
-  { categoryId: "prime", merchant: "AMAZON PRIME MEMBER TORONTO ON", source: "src-ws-leon", day: 10, amount: 799 },
+  { categoryId: "subs", merchant: "AMAZON PRIME MEMBER TORONTO ON", source: "src-ws-leon", day: 10, amount: 799 },
   { categoryId: "subs", merchant: "CLAUDE.AI SUBSCRIPTION", source: "src-amex", day: 8, amount: 2875 },
   { categoryId: "subs", merchant: "APPLE.COM/BILL ICLOUD", source: "src-ws-sara", day: 12, amount: 1149 },
   { categoryId: "subs", merchant: "NYTIMES DIGITAL", source: "src-ws-leon", day: 14, amount: 800 },
@@ -275,7 +280,8 @@ export function buildSeed() {
         categoryId: c.id,
         month,
         // August: rent and debt are paid, the parent transfer isn't yet.
-        isPaid: !isAugust || c.id !== "parents",
+        // August is mid-flight: the transfer and both travel lines aren't done.
+        isPaid: !isAugust || !["parents", "travel", "manitoba"].includes(c.id),
         amount: c.monthlyCap,
       });
     }

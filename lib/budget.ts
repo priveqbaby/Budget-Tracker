@@ -26,6 +26,10 @@ export interface MonthSummary {
     category: Category;
     amount: number;
     isPaid: boolean;
+    /** Statement spend filed against this line, so nothing disappears when a
+        recurring bill moves onto the checklist. */
+    spent: number;
+    transactions: Transaction[];
   }>;
   totalVariableSpent: number;
   totalVariableCap: number;
@@ -122,10 +126,13 @@ export function summarizeMonth(
     .filter((c) => c.isFixed)
     .map((category) => {
       const fp = data.fixedPayments.find((f) => f.categoryId === category.id);
+      const txns = countable.filter((t) => t.categoryId === category.id);
       return {
         category,
         amount: fp?.amount ?? capOf(category),
         isPaid: fp?.isPaid ?? false,
+        spent: txns.reduce((sum, t) => sum + t.amount, 0),
+        transactions: txns,
       };
     });
 

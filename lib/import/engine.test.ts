@@ -167,7 +167,7 @@ describe("heuristic fallback (demo mode / no API key)", () => {
     { id: "hydro", name: "Hydro" },
     { id: "wifi", name: "Wifi" },
     { id: "streaming", name: "Streaming" },
-    { id: "prime", name: "Amazon Prime" },
+    { id: "subs", name: "Subscriptions" },
   ];
 
   it("classifies obvious Montreal merchants onto the Sankey lines", () => {
@@ -195,10 +195,24 @@ describe("heuristic fallback (demo mode / no API key)", () => {
       ["AMAZON PRIME MEMBER", "NETFLIX.COM", "PORTER AIRLINES", "WINNIPEG HOTEL"],
       sankey,
     );
-    expect(out["AMAZON PRIME MEMBER"]).toBe("prime");
+    // Amazon Prime lost its own line and folds into Subscriptions.
+    expect(out["AMAZON PRIME MEMBER"]).toBe("subs");
     expect(out["NETFLIX.COM"]).toBe("streaming");
     expect(out["PORTER AIRLINES"]).toBe("travel");
     expect(out["WINNIPEG HOTEL"]).toBe("manitoba");
+  });
+
+  it("routes recurring bills to the fixed lines they now live on", () => {
+    // Wifi, Hydro and Cell moved onto the fixed checklist, but their statement
+    // rows still have to land somewhere.
+    const out = heuristicAssignments(
+      ["VIDEOTRON LTEE", "HYDRO QUEBEC", "FIZZ MOBILE", "CLAUDE.AI SUBSCRIPTION"],
+      sankey,
+    );
+    expect(out["VIDEOTRON LTEE"]).toBe("wifi");
+    expect(out["HYDRO QUEBEC"]).toBe("hydro");
+    expect(out["FIZZ MOBILE"]).toBe("cell");
+    expect(out["CLAUDE.AI SUBSCRIPTION"]).toBe("subs");
   });
 
   it("leaves a merchant with no matching line uncategorized", () => {

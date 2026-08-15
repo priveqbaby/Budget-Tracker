@@ -9,6 +9,8 @@ export interface FixedItemDto {
   name: string;
   amount: number;
   isPaid: boolean;
+  /** Statement spend on this line, when any was imported. */
+  spent: number;
 }
 
 export function FixedChecklist({ items, month }: { items: FixedItemDto[]; month: string }) {
@@ -41,8 +43,15 @@ export function FixedChecklist({ items, month }: { items: FixedItemDto[]; month:
             >
               {item.name}
             </span>
-            <span className="money text-[13.5px] text-ink-secondary">
-              {formatCentsWhole(item.amount)}
+            <span className="text-right">
+              <span className="money block text-[13.5px] text-ink-secondary">
+                {formatCentsWhole(item.amount)}
+              </span>
+              {item.spent > 0 && (
+                <span className="money block text-[11px] text-ink-muted">
+                  {formatCentsWhole(item.spent)} on card
+                </span>
+              )}
             </span>
             <span
               className={`w-[52px] text-right text-[11.5px] font-semibold ${
