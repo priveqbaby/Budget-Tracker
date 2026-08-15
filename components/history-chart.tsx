@@ -38,7 +38,7 @@ export function HistoryChart({ points, selected }: { points: HistoryPointDto[]; 
             tick={{ fill: "var(--color-ink-muted)", fontSize: 11, fontFamily: "var(--font-mono)" }}
           />
           <Tooltip
-            cursor={{ fill: "rgba(58,46,29,0.05)" }}
+            cursor={{ fill: "var(--color-sunken)" }}
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
               const p = payload[0].payload as (typeof data)[number];
@@ -59,7 +59,7 @@ export function HistoryChart({ points, selected }: { points: HistoryPointDto[]; 
             {data.map((p) => (
               <Cell
                 key={p.month}
-                fill={p.month === selected ? "var(--color-ember)" : "#dcc5a4"}
+                fill={p.month === selected ? "var(--color-accent)" : "var(--color-hairline-strong)"}
               />
             ))}
           </Bar>

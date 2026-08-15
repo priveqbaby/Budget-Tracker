@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import "@fontsource-variable/fraunces";
-import "@fontsource-variable/instrument-sans";
-import "@fontsource/spline-sans-mono";
-import "@fontsource/spline-sans-mono/500.css";
+import "@fontsource/titillium-web/400.css";
+import "@fontsource/titillium-web/600.css";
+import "@fontsource/titillium-web/700.css";
 import "./globals.css";
 import { MobileTopBar, Sidebar } from "@/components/sidebar";
 import { isDemoMode } from "@/lib/data";

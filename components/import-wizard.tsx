@@ -142,7 +142,7 @@ function StepRail({ current }: { current: number }) {
               i < current
                 ? "bg-ok text-white"
                 : i === current
-                  ? "bg-ember text-white"
+                  ? "bg-accent text-white"
                   : "bg-sunken text-ink-muted"
             }`}
           >
@@ -190,7 +190,7 @@ function PickStep({
             onClick={() => setSourceId(s.id)}
             className={`rounded-[10px] border px-4 py-2.5 text-left text-[13.5px] font-semibold transition-colors ${
               s.id === sourceId
-                ? "border-ember bg-ember-wash text-ember-deep"
+                ? "border-accent bg-accent-wash text-accent-deep"
                 : "border-hairline-deep bg-surface text-ink-secondary hover:border-ink-muted"
             }`}
           >
@@ -219,7 +219,7 @@ function PickStep({
           if (file) readFile(file);
         }}
         className={`mt-5 flex cursor-pointer flex-col items-center justify-center rounded-[12px] border-2 border-dashed px-6 py-10 text-center transition-colors ${
-          drag ? "border-ember bg-ember-wash" : "border-hairline-deep bg-sunken/50 hover:border-ink-muted"
+          drag ? "border-accent bg-accent-wash" : "border-hairline-deep bg-sunken/50 hover:border-ink-muted"
         }`}
       >
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden className="text-ink-muted">
@@ -247,7 +247,7 @@ function PickStep({
         <button
           type="button"
           disabled={pending}
-          className="text-[13px] font-semibold text-ember underline decoration-ember/40 underline-offset-4 hover:text-ember-deep"
+          className="text-[13px] font-semibold text-accent underline decoration-accent/40 underline-offset-4 hover:text-accent-deep"
           onClick={async () => {
             const res = await fetch("/sample-amex.csv");
             onFile("sample-amex.csv", await res.text());
@@ -359,7 +359,7 @@ function MappingStep({
               onClick={() => setMapping((m) => ({ ...m, sign: value }))}
               className={`flex-1 rounded-[10px] border px-3.5 py-2.5 text-left transition-colors ${
                 mapping.sign === value
-                  ? "border-ember bg-ember-wash"
+                  ? "border-accent bg-accent-wash"
                   : "border-hairline-deep hover:border-ink-muted"
               }`}
             >
@@ -380,7 +380,7 @@ function MappingStep({
                     key={h}
                     className={`px-3 py-2 font-semibold ${
                       [mapping.date, mapping.description, mapping.amount].includes(h)
-                        ? "text-ember-deep"
+                        ? "text-accent-deep"
                         : "text-ink-muted"
                     }`}
                   >
@@ -562,7 +562,7 @@ function ReviewStep({
                 onChange={(e) =>
                   setIncludePayments((p) => ({ ...p, [r.index]: e.target.checked }))
                 }
-                className="h-4 w-4 accent-[var(--color-ember)]"
+                className="h-4 w-4 accent-[var(--color-accent)]"
               />
               <span className="min-w-0 flex-1 truncate text-ink-secondary">
                 {r.description} <span className="text-ink-muted">— card payment, not spend</span>

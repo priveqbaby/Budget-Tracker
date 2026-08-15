@@ -256,7 +256,7 @@ function AddIncome({ members, defaultMonth }: { members: MemberDto[]; defaultMon
           type="checkbox"
           checked={isRecurring}
           onChange={(e) => setIsRecurring(e.target.checked)}
-          className="h-4 w-4 accent-[var(--color-ember)]"
+          className="h-4 w-4 accent-[var(--color-accent)]"
         />
         Every month (a contribution floor or steady salary)
       </label>

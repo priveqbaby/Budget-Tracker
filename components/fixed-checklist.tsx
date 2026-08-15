@@ -19,7 +19,7 @@ export function FixedChecklist({ items, month }: { items: FixedItemDto[]; month:
     <ul>
       {optimistic.map((item) => (
         <li key={item.categoryId} className="border-b border-hairline last:border-b-0">
-          <label className="flex cursor-pointer items-center gap-3 px-5 py-3 transition-colors hover:bg-[rgba(58,46,29,0.03)]">
+          <label className="flex cursor-pointer items-center gap-3 px-5 py-3 transition-colors hover:bg-sunken/60">
             <input
               type="checkbox"
               checked={item.isPaid}

@@ -89,7 +89,7 @@ export function SurplusStrip({
             className="meter-fill"
             style={{
               width: `${pct}%`,
-              background: exhausted ? "var(--color-danger)" : "var(--color-ember)",
+              background: exhausted ? "var(--color-danger)" : "var(--color-accent)",
             }}
           />
         </div>

@@ -52,8 +52,8 @@ const STATUS_LABEL: Record<CategoryRowDto["status"], string> = {
 
 // Member identity colors (fixed assignment, never re-ranked).
 const MEMBER_COLOR: Record<string, string> = {
-  leon: "#a85a32",
-  sara: "#56698f",
+  leon: "#021cfc",
+  sara: "#2b2b2b",
 };
 
 export function CategoryRows({
@@ -79,7 +79,7 @@ export function CategoryRows({
             <button
               type="button"
               onClick={() => setOpen(isOpen ? null : row.id)}
-              className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-1.5 px-5 py-3.5 text-left transition-colors hover:bg-[rgba(58,46,29,0.03)] md:grid-cols-[200px_minmax(0,1fr)_auto]"
+              className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-1.5 px-5 py-3.5 text-left transition-colors hover:bg-sunken/60 md:grid-cols-[200px_minmax(0,1fr)_auto]"
               aria-expanded={isOpen}
             >
               <span className="flex min-w-0 items-center gap-2">
@@ -92,7 +92,7 @@ export function CategoryRows({
                 <span className="truncate text-[14px] font-semibold text-ink">{row.name}</span>
                 {row.unconfirmedCount > 0 && (
                   <span
-                    className="h-[7px] w-[7px] shrink-0 rounded-full bg-ember"
+                    className="h-[7px] w-[7px] shrink-0 rounded-full bg-accent"
                     title={`${row.unconfirmedCount} to review`}
                   />
                 )}
@@ -142,7 +142,7 @@ export function CategoryRows({
                             <span className="ml-2 text-[11px] font-semibold text-ink-muted">excluded</span>
                           )}
                           {!t.isConfirmed && (
-                            <span className="ml-2 rounded-full bg-ember-wash px-2 py-[1px] text-[10.5px] font-semibold text-ember-deep">
+                            <span className="ml-2 rounded-full bg-accent-wash px-2 py-[1px] text-[10.5px] font-semibold text-accent-deep">
                               review
                             </span>
                           )}

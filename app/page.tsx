@@ -147,7 +147,7 @@ export default async function Dashboard({
                 className="meter-fill"
                 style={{
                   width: `${Math.min(100, (s.totalVariableSpent / Math.max(1, s.totalVariableCap)) * 100)}%`,
-                  background: "var(--color-ember)",
+                  background: "var(--color-accent)",
                 }}
               />
               {isCurrent && (

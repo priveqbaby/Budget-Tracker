@@ -1,104 +1,125 @@
 @import "tailwindcss";
 
 /* ---------------------------------------------------------------------------
-   Design system — "warm ledger": Notion's calm, a stationer's warmth.
-   Paper surfaces, ink text, ember accent. Fraunces for display, Instrument
-   Sans for UI, Spline Sans Mono for columns of money.
+   Yoko Space Design System v1.2.0 — ported from Figma (file fVrPewJapYg1xDI3xmdifa).
+
+   Values marked (Yoko) are the design system's own variables, read from the
+   file. Values marked (derived) are ours: the file is the documentation kit,
+   so it carries the foundation but no accent ramp and no semantic status
+   palette. Derived colors were validated for colorblind separation and
+   contrast against Yoko's white surface before use.
 --------------------------------------------------------------------------- */
 
 @theme {
-  --color-page: #f6f1e8;
-  --color-surface: #fcfaf6;
-  --color-sunken: #f1eadd;
-  --color-hairline: #e7dfd0;
-  --color-hairline-deep: #d8cdb9;
+  /* Surfaces — bg/neutral/* (Yoko) */
+  --color-page: #f9f9f9;        /* bg/neutral/3 */
+  --color-surface: #ffffff;     /* bg/neutral/1 */
+  --color-surface-2: #fcfcfc;   /* bg/neutral/2 */
+  --color-sunken: #f1f1f1;      /* bg/neutral/4 */
+  --color-inverse: #000000;     /* bg/neutral/10 */
 
-  --color-ink: #26211b;
-  --color-ink-secondary: #6b6254;
-  --color-ink-muted: #99907e;
+  /* Borders — border/neutral/* (Yoko) */
+  --color-hairline: #e3e3e3;      /* border/neutral/8 */
+  --color-hairline-deep: #d5d5d5; /* border/neutral/7 */
+  --color-hairline-strong: #b8b8b8; /* border/neutral/6 */
 
-  --color-ember: #a85a32;
-  --color-ember-deep: #8f4a28;
-  --color-ember-wash: #f3e3d6;
+  /* Ink — fg/neutral/* (Yoko) */
+  --color-ink: #000000;            /* fg/neutral/1 */
+  --color-ink-secondary: #2b2b2b;  /* fg/neutral/3 */
+  --color-ink-muted: #646464;      /* fg/neutral/5 */
+  --color-ink-inverse: #ffffff;    /* fg/neutral/10 */
 
-  --color-ok: #3e7f3e;
-  --color-ok-track: #dce8d4;
-  --color-warn: #ce930b;
-  --color-warn-track: #f2e4be;
-  --color-danger: #c23524;
-  --color-danger-track: #f4d7ce;
+  /* Accent — Color/Yoko (Yoko). Hover step and wash are (derived). */
+  --color-accent: #021cfc;
+  --color-accent-deep: #0114c4;
+  --color-accent-wash: #e7eaff;
 
-  --font-display: "Fraunces Variable", "Iowan Old Style", Georgia, serif;
-  --font-sans: "Instrument Sans Variable", "Instrument Sans", system-ui, sans-serif;
-  --font-mono: "Spline Sans Mono", "SF Mono", ui-monospace, monospace;
+  /* Semantic status (derived) — validated: CVD ΔE 14.9, normal ΔE 23.5.
+     Amber sits below 3:1 on white by design, so every status is always
+     paired with a visible text label, never carried by color alone. */
+  --color-ok: #0f7a33;
+  --color-ok-track: #dff0e4;
+  --color-warn: #d99400;
+  --color-warn-track: #fbeecd;
+  --color-danger: #ce1f2e;
+  --color-danger-track: #fadfe1;
 
-  --shadow-card: 0 1px 2px rgba(58, 46, 29, 0.05), 0 4px 16px rgba(58, 46, 29, 0.05);
-  --shadow-pop: 0 2px 6px rgba(58, 46, 29, 0.08), 0 12px 32px rgba(58, 46, 29, 0.10);
+  /* Typography — typography/* (Yoko). One family, as the system specifies. */
+  --font-sans: "Titillium Web", system-ui, sans-serif;
+  --font-display: "Titillium Web", system-ui, sans-serif;
+  --font-mono: "Titillium Web", ui-monospace, monospace;
+
+  /* Radius — (Yoko): rounded-none 0 · radius3 12 · rounded-2xl 16 · full */
+  --radius-control: 12px;
+  --radius-card: 16px;
+
+  /* shadow/shadow-4 (Yoko) — note the blue-tinted shadow color */
+  --shadow-card: 0 4px 4px -2px #18274b14, 0 2px 4px -2px #18274b1f;
+  --shadow-pop: 0 8px 16px -4px #18274b1f, 0 4px 8px -4px #18274b14;
 }
 
 ::selection {
-  background: var(--color-ember-wash);
-  color: var(--color-ember-deep);
+  background: var(--color-accent);
+  color: var(--color-ink-inverse);
 }
 
 html {
   color-scheme: light;
 }
 
+/* Yoko is flat and high-contrast — no grain, no gradient wash. */
 body {
   background-color: var(--color-page);
-  /* A whisper of paper grain + a warm glow at the top of the page. */
-  background-image:
-    radial-gradient(1100px 380px at 18% -80px, rgba(233, 200, 160, 0.30), transparent 70%),
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0.24 0 0 0 0 0.19 0 0 0 0 0.12 0 0 0 0.028 0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
   color: var(--color-ink);
   font-family: var(--font-sans);
-  font-size: 15px;
-  line-height: 1.55;
+  font-size: 16px;      /* typography/size/base */
+  line-height: 1.35;
   -webkit-font-smoothing: antialiased;
 }
 
 .font-display {
   font-family: var(--font-display);
-  font-variation-settings: "SOFT" 40, "WONK" 0;
-  letter-spacing: -0.015em;
-}
-
-.money {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+  font-weight: 700;     /* typography/weight/bold */
   letter-spacing: -0.02em;
 }
 
-/* Overline labels — the quiet section voice */
+/* Money columns keep tabular figures so digits align down a column. */
+.money {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+
+/* Caption style — English/Caption/c1: 12/16, regular */
 .overline {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-ink-muted);
+  line-height: 16px;
 }
 
 .card {
   background: var(--color-surface);
   border: 1px solid var(--color-hairline);
-  border-radius: 14px;
+  border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
 }
 
-/* Budget meter: ≤24px mark, 4px rounded data-end, square baseline,
-   track = lighter step of the same ramp, hairline pace tick. */
+/* Budget meter: square baseline, 4px rounded data-end, track a lighter step
+   of the same ramp, hairline pace tick. */
 .meter {
   position: relative;
   height: 10px;
-  border-radius: 2px 5px 5px 2px;
+  border-radius: 0 5px 5px 0;
   overflow: hidden;
 }
 .meter-fill {
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: 0 4px 4px 0;
-  transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: width 400ms cubic-bezier(0.2, 0, 0, 1);
 }
 .meter-tick {
   position: absolute;
@@ -106,8 +127,7 @@ body {
   bottom: -3px;
   width: 2px;
   background: var(--color-ink);
-  opacity: 0.55;
-  border-radius: 1px;
+  opacity: 0.6;
 }
 
 .status-ok { color: var(--color-ok); }
@@ -119,14 +139,15 @@ body {
   align-items: center;
   gap: 6px;
   padding: 3px 10px;
-  border-radius: 999px;
+  border-radius: 9999px;
   font-size: 12px;
   font-weight: 600;
+  line-height: 16px;
   border: 1px solid transparent;
 }
-.chip-ok { background: var(--color-ok-track); color: #2c5e2c; border-color: rgba(62, 127, 62, 0.25); }
-.chip-watch { background: var(--color-warn-track); color: #7d5a06; border-color: rgba(206, 147, 11, 0.30); }
-.chip-over { background: var(--color-danger-track); color: #93291b; border-color: rgba(194, 53, 36, 0.25); }
+.chip-ok { background: var(--color-ok-track); color: #0b5a26; border-color: #b6dcc2; }
+.chip-watch { background: var(--color-warn-track); color: #8a5f00; border-color: #eed79b; }
+.chip-over { background: var(--color-danger-track); color: #9c1723; border-color: #f0bcc1; }
 .chip-neutral { background: var(--color-sunken); color: var(--color-ink-secondary); border-color: var(--color-hairline); }
 
 .btn {
@@ -135,74 +156,82 @@ body {
   justify-content: center;
   gap: 8px;
   padding: 8px 16px;
-  border-radius: 9px;
-  font-size: 14px;
-  font-weight: 600;
+  border-radius: var(--radius-control);
+  font-size: 14px;      /* typography/size/sm */
+  font-weight: 600;     /* typography/weight/semibold */
+  line-height: 20px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 120ms ease, border-color 120ms ease, transform 60ms ease;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
 }
-.btn:active { transform: translateY(1px); }
-.btn-primary { background: var(--color-ember); color: #fdf8f3; }
-.btn-primary:hover { background: var(--color-ember-deep); }
+.btn-primary { background: var(--color-accent); color: var(--color-ink-inverse); }
+.btn-primary:hover { background: var(--color-accent-deep); }
+.btn-primary:disabled { opacity: 0.45; cursor: default; }
 .btn-ghost {
-  background: transparent;
+  background: var(--color-surface);
   color: var(--color-ink-secondary);
   border-color: var(--color-hairline-deep);
 }
-.btn-ghost:hover { background: var(--color-sunken); color: var(--color-ink); }
+.btn-ghost:hover { border-color: var(--color-ink); color: var(--color-ink); }
 
 .navlink {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 10px;
-  border-radius: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-control);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
+  line-height: 20px;
   color: var(--color-ink-secondary);
   transition: background 100ms ease, color 100ms ease;
 }
-.navlink:hover { background: rgba(58, 46, 29, 0.05); color: var(--color-ink); }
+.navlink:hover { background: var(--color-sunken); color: var(--color-ink); }
 .navlink[data-active="true"] {
-  background: rgba(58, 46, 29, 0.07);
-  color: var(--color-ink);
-  font-weight: 600;
+  background: var(--color-inverse);
+  color: var(--color-ink-inverse);
 }
 
 .field {
   width: 100%;
   padding: 8px 12px;
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   border: 1px solid var(--color-hairline-deep);
   background: var(--color-surface);
+  font-family: var(--font-sans);
   font-size: 14px;
+  line-height: 20px;
   color: var(--color-ink);
   outline: none;
   transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 .field:focus {
-  border-color: var(--color-ember);
-  box-shadow: 0 0 0 3px rgba(168, 90, 50, 0.15);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(2, 28, 252, 0.16);
 }
 
-/* Table rows expand with a soft reveal */
+/* Yoko's focus ring is the accent, squared to the control's own radius. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.field:focus-visible { outline: none; }
+
 @keyframes rise-in {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.rise-in { animation: rise-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.rise-in { animation: rise-in 180ms cubic-bezier(0.2, 0, 0, 1) both; }
 
-/* Staggered page load for dashboard sections */
 @keyframes settle {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.settle { animation: settle 500ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-.settle-1 { animation-delay: 40ms; }
-.settle-2 { animation-delay: 110ms; }
-.settle-3 { animation-delay: 180ms; }
-.settle-4 { animation-delay: 250ms; }
+.settle { animation: settle 320ms cubic-bezier(0.2, 0, 0, 1) both; }
+.settle-1 { animation-delay: 30ms; }
+.settle-2 { animation-delay: 80ms; }
+.settle-3 { animation-delay: 130ms; }
+.settle-4 { animation-delay: 180ms; }
 
 @media (prefers-reduced-motion: reduce) {
   .settle, .settle-1, .settle-2, .settle-3, .settle-4, .rise-in { animation: none; }

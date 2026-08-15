@@ -21,12 +21,12 @@ export function UncategorizedRow({
   const total = transactions.reduce((s, t) => s + t.amount, 0);
 
   return (
-    <div className="rounded-b-[13px] border-t border-hairline bg-ember-wash/30">
+    <div className="rounded-b-[13px] border-t border-hairline bg-accent-wash/30">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 px-5 py-3.5 text-left transition-colors hover:bg-ember-wash/50 md:grid-cols-[200px_minmax(0,1fr)_auto]"
+        className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 px-5 py-3.5 text-left transition-colors hover:bg-accent-wash/50 md:grid-cols-[200px_minmax(0,1fr)_auto]"
       >
         <span className="flex min-w-0 items-center gap-2">
           <svg
@@ -35,14 +35,14 @@ export function UncategorizedRow({
           >
             <path d="M3 1.5 7 5 3 8.5" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <span className="truncate text-[14px] font-semibold text-ember-deep">Uncategorized</span>
+          <span className="truncate text-[14px] font-semibold text-accent-deep">Uncategorized</span>
         </span>
         <span className="hidden text-[12.5px] text-ink-secondary md:block">
           counts against the month, but not against any cap
         </span>
         <span className="whitespace-nowrap text-right">
           <span className="money text-[13.5px] font-medium text-ink">{formatCents(total)}</span>
-          <span className="ml-2 text-[11.5px] font-semibold text-ember-deep">
+          <span className="ml-2 text-[11.5px] font-semibold text-accent-deep">
             {transactions.length} to file
           </span>
         </span>
