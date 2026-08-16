@@ -61,12 +61,10 @@ export function MonthFlowCard({
     amount: number;
   }) => void;
 }) {
-  const shownFree = useCountUp(flow.free);
   const shownIncome = useCountUp(flow.income);
   const shownLeft = useCountUp(flow.left);
 
-  const over = flow.free < 0;
-  const past = flow.free - flow.plannedSurplus;
+  const over = flow.left < 0;
 
   return (
     <section className="settle settle-1 relative z-10 mt-6">
@@ -99,70 +97,40 @@ export function MonthFlowCard({
           />
         </div>
 
-        <div className="mt-5 flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
-          <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-[12px] text-ink-muted">
-            {members.map((m) =>
-              byMember[m.id] ? (
-                <span key={m.id}>
-                  {m.displayName} <span className="money">{formatCentsWhole(byMember[m.id])}</span>
-                </span>
-              ) : null,
-            )}
-            {byMember.household ? (
-              <span>
-                Joint <span className="money">{formatCentsWhole(byMember.household)}</span>
+        <div className="mt-3 flex flex-wrap gap-x-3.5 gap-y-1 text-[12px] text-ink-muted">
+          {members.map((m) =>
+            byMember[m.id] ? (
+              <span key={m.id}>
+                {m.displayName} <span className="money">{formatCentsWhole(byMember[m.id])}</span>
               </span>
-            ) : null}
-          </div>
-
-          <div className="flex items-start gap-7 text-right">
-            <Stat label="Spent" value={formatCentsWhole(flow.spent)} />
-            {/* The number that drains: every tick and every purchase moves it. */}
-            <div>
-              <div className="overline !text-[10px]">Still in the account</div>
-              <div
-                className={`money mt-1 text-[26px] font-semibold leading-none ${
-                  flow.left < 0 ? "status-over" : "text-ink"
-                }`}
-              >
-                {formatCentsWhole(shownLeft)}
-              </div>
-              {flow.committed > 0 && (
-                <div className="mt-1 text-[11.5px] text-ink-muted">
-                  {formatCentsWhole(flow.committed)} of it promised
-                </div>
-              )}
-            </div>
-            <div>
-              <div className="overline !text-[10px]">Left over</div>
-              <div
-                className={`money mt-1 text-[26px] font-semibold leading-none ${
-                  over ? "status-over" : flow.goalMet ? "status-ok" : "text-ink"
-                }`}
-              >
-                {formatCentsWhole(shownFree)}
-              </div>
-              {flow.plannedSurplus > 0 && (
-                <div className="mt-1 text-[11.5px] text-ink-muted">
-                  {flow.goalMet
-                    ? `${formatCentsWhole(past)} past the ${formatCentsWhole(flow.plannedSurplus)} goal`
-                    : `${formatCentsWhole(-past)} to the ${formatCentsWhole(flow.plannedSurplus)} goal`}
-                </div>
-              )}
-            </div>
-          </div>
+            ) : null,
+          )}
+          {byMember.household ? (
+            <span>
+              Joint <span className="money">{formatCentsWhole(byMember.household)}</span>
+            </span>
+          ) : null}
         </div>
 
-        <Tank flow={flow} pulse={pulse} className="mt-9" />
+        <Tank flow={flow} pulse={pulse} className="mt-8" />
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12px] text-ink-secondary">
-          <Key className="flowbar-variable" label="variable spend" />
-          <Key className="flowbar-fixed" label="fixed spend" />
-          {flow.committed > 0 && <Key className="flowbar-committed" label="still committed" />}
-          <Key className={over ? "flowbar-short" : "flowbar-free"} label="left over" />
-          {flow.plannedSurplus > 0 && (
-            <Key className="flowbar-surplus" label={`${formatCentsWhole(flow.plannedSurplus)} surplus`} />
-          )}
+        {/* The legend is the figures: three shares of the joint account, spread
+            across the bar they belong to. */}
+        <div className="mt-4 grid grid-cols-3 gap-4">
+          <Share swatch="flowbar-variable" label="Variable spend" value={flow.variableSpent} emoji="💵" />
+          <Share swatch="flowbar-fixed" label="Fixed spend" value={flow.fixedSpent} align="center" />
+          <Share
+            swatch={over ? "flowbar-short" : "flowbar-surplus"}
+            label="Surplus"
+            value={flow.left}
+            align="right"
+            tone={over ? "over" : undefined}
+            note={
+              flow.committed > 0
+                ? `${formatCentsWhole(flow.committed)} of bills still to pay`
+                : undefined
+            }
+          />
         </div>
       </div>
     </section>
@@ -170,21 +138,18 @@ export function MonthFlowCard({
 }
 
 /**
- * The bar is net income, cut into five: what variable spending took, what the
- * fixed bills took, what is still promised, what is free, and the surplus slice
- * the month is trying to fill. Each is a share of net, so they always add to it.
+ * The bar is the joint account, cut into three: what variable spending took,
+ * what the fixed bills took, and the surplus — simply whatever is left. The
+ * three always add to the account, so the bar cannot misstate it.
  */
 function geometry(flow: MonthFlow) {
   const income = Math.max(1, flow.income);
   const pct = (n: number) => Math.max(0, Math.min(100, (n / income) * 100));
-  // Clamped in order, so an over-committed month never paints past the bar.
+  // Clamped in order, so an overspent month never paints past the bar.
   const variableW = pct(flow.variableSpent);
   const fixedW = Math.min(pct(flow.fixedSpent), 100 - variableW);
-  const committedW = Math.min(pct(flow.committed), 100 - variableW - fixedW);
-  const rest = Math.max(0, 100 - variableW - fixedW - committedW);
-  const surplusW = Math.min(pct(flow.surplusHeld), rest);
-  const freeW = Math.max(0, rest - surplusW);
-  return { variableW, fixedW, committedW, freeW, surplusW, spentW: variableW + fixedW };
+  const surplusW = Math.max(0, 100 - variableW - fixedW);
+  return { variableW, fixedW, surplusW, spentW: variableW + fixedW };
 }
 
 /**
@@ -203,30 +168,26 @@ export function Tank({
   className?: string;
   slim?: boolean;
 }) {
-  const { variableW, fixedW, committedW, freeW, surplusW, spentW } = geometry(flow);
-  const over = flow.free < 0;
+  const { variableW, fixedW, surplusW, spentW } = geometry(flow);
+  const over = flow.left < 0;
 
   return (
     <div className={`relative ${className}`}>
       <div
         className={`flowbar${slim ? " flowbar-slim" : ""}`}
         role="img"
-        aria-label={`Of ${formatCentsWhole(flow.income)} net, ${formatCentsWhole(
+        aria-label={`Of ${formatCentsWhole(flow.income)} in the joint account, ${formatCentsWhole(
           flow.variableSpent,
         )} variable spend, ${formatCentsWhole(flow.fixedSpent)} fixed spend, ${formatCentsWhole(
-          flow.committed,
-        )} still committed, ${formatCentsWhole(flow.freeAboveGoal)} free, and ${formatCentsWhole(
-          flow.surplusHeld,
-        )} of a ${formatCentsWhole(flow.plannedSurplus)} surplus.`}
+          flow.left,
+        )} surplus.`}
       >
         <span className="flowbar-seg flowbar-variable" style={{ width: `${variableW}%` }} />
         <span className="flowbar-seg flowbar-fixed" style={{ width: `${fixedW}%` }} />
-        <span className="flowbar-seg flowbar-committed" style={{ width: `${committedW}%` }} />
         <span
-          className={`flowbar-seg ${over ? "flowbar-short" : "flowbar-free"}`}
-          style={{ width: `${freeW}%` }}
+          className={`flowbar-seg ${over ? "flowbar-short" : "flowbar-surplus"}`}
+          style={{ width: `${surplusW}%` }}
         />
-        <span className="flowbar-seg flowbar-surplus" style={{ width: `${surplusW}%` }} />
         {/* A fresh element per move: a CSS animation only restarts on mount, and
             keying the bar itself would kill the segment width transitions. */}
         {pulse && (
@@ -242,7 +203,7 @@ export function Tank({
           // In the pinned strip the bar is flush with the top of the viewport,
           // so a receipt that rises would be clipped: it drops instead.
           className={`flowpill flowpill-${pulse.tone}${slim ? " flowpill-below" : ""}`}
-          style={{ left: `${pulse.tone === "out" ? spentW : 100 - freeW / 2}%` }}
+          style={{ left: `${pulse.tone === "out" ? spentW : 100 - surplusW / 2}%` }}
         >
           {pulse.tone === "out" ? "−" : "+"}
           {formatCentsWhole(pulse.amount)}
@@ -274,33 +235,20 @@ export function StickyTank({
     <div className={`tankbar${on ? " is-on" : ""}`} aria-hidden={!on}>
       <div className="tankbar-inner">
         <div className="tankbar-stat">
-          <span className="overline !text-[9.5px]">Still in the account</span>
+          <span className="overline !text-[9.5px]">Spent</span>
+          <span className="money text-[19px] font-semibold leading-none text-ink-secondary">
+            {formatCentsWhole(flow.spent)}
+          </span>
+        </div>
+        <Tank flow={flow} pulse={pulse} slim className="flex-1" />
+        <div className="tankbar-stat text-right">
+          <span className="overline !text-[9.5px]">Surplus</span>
           <span
             className={`money text-[19px] font-semibold leading-none ${
               flow.left < 0 ? "status-over" : "text-ink"
             }`}
           >
             {formatCentsWhole(flow.left)}
-          </span>
-        </div>
-        <Tank flow={flow} pulse={pulse} slim className="flex-1" />
-        <div className="tankbar-stat text-right">
-          <span className="overline !text-[9.5px]">Free</span>
-          <span
-            className={`money text-[19px] font-semibold leading-none ${
-              flow.free < 0 ? "status-over" : flow.goalMet ? "status-ok" : "text-ink"
-            }`}
-          >
-            {formatCentsWhole(flow.free)}
-          </span>
-        </div>
-        <div className="tankbar-stat text-right">
-          <span className="overline !text-[9.5px]">Surplus</span>
-          <span className={`money text-[19px] font-semibold leading-none ${flow.goalMet ? "status-ok" : "text-ink-muted"}`}>
-            {formatCentsWhole(flow.surplusHeld)}
-            <span className="text-[12px] font-normal text-ink-muted">
-              {" / "}{formatCentsWhole(flow.plannedSurplus)}
-            </span>
           </span>
         </div>
       </div>
@@ -345,21 +293,52 @@ function Arrow() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-[74px]">
-      <div className="overline !text-[10px]">{label}</div>
-      <div className="money mt-1 text-[17px] font-semibold text-ink-secondary">{value}</div>
-    </div>
-  );
-}
 
-function Key({ className, label }: { className: string; label: string }) {
+/** One share of the joint account: swatch, name, figure. */
+function Share({
+  swatch,
+  label,
+  value,
+  emoji,
+  note,
+  align = "left",
+  tone,
+}: {
+  swatch: string;
+  label: string;
+  value: number;
+  emoji?: string;
+  note?: string;
+  align?: "left" | "center" | "right";
+  tone?: "over";
+}) {
+  const box = align === "right" ? "text-right" : align === "center" ? "text-center" : "";
+  const row =
+    align === "right" ? "justify-end" : align === "center" ? "justify-center" : "";
   return (
-    <span className="flex items-center gap-1.5">
-      <span className={`inline-block h-[10px] w-[10px] rounded-[3px] ${className}`} />
-      {label}
-    </span>
+    <div className={box}>
+      <div className={`flex items-center gap-2 ${row}`}>
+        <span className={`inline-block h-[10px] w-[10px] shrink-0 rounded-[3px] ${swatch}`} />
+        <span className="text-[12px] font-semibold text-ink-secondary">
+          {emoji && (
+            <span aria-hidden className="mr-1">
+              {emoji}
+            </span>
+          )}
+          {label}
+        </span>
+      </div>
+      <div
+        // Plain ink even when it is large: the caption below carries the
+        // caveat that some of it is already promised to bills.
+        className={`money mt-1.5 text-[24px] font-semibold leading-none ${
+          tone === "over" ? "status-over" : "text-ink"
+        }`}
+      >
+        {formatCentsWhole(value)}
+      </div>
+      {note && <div className="mt-1 text-[11.5px] text-ink-muted">{note}</div>}
+    </div>
   );
 }
 

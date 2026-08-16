@@ -218,7 +218,9 @@ export function MonthBoard({
       <section className="card settle settle-2 mt-8 px-7 py-6">
         <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
           <div className="min-w-[240px]">
-            <div className="overline">Variable spend</div>
+            <div className="overline flex items-center gap-1.5">
+              <span aria-hidden>💵</span>Variable spend
+            </div>
             <div className="font-display mt-1 text-[52px] font-semibold leading-none tracking-tight text-ink">
               {formatCents(totalVariableSpent)}
             </div>

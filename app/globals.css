@@ -299,13 +299,11 @@ body {
   height: 100%;
   transition: width 520ms var(--lift);
 }
-/* Validated as a categorical set on white: worst pair CVD ΔE 14.3 (deutan),
-   normal ΔE 15.2. The two greens are one hue at two lightnesses on purpose —
-   free and the surplus it is filling are the same kind of money. */
+/* Three shares of the joint account, validated as a categorical set on white:
+   worst pair CVD ΔE 14.3 (deutan), normal ΔE 15.2. */
 .flowbar-variable { background: var(--color-accent); }   /* wisteria */
 .flowbar-fixed    { background: #5aa9e6; }               /* sky */
-.flowbar-free     { background: var(--color-ok); }       /* lily pad */
-.flowbar-surplus  { background: #5cbd92; }               /* lighter lily pad */
+.flowbar-surplus  { background: #5cbd92; }               /* lily pad */
 .flowbar-short    { background: var(--color-danger); }
 /* Stripes, not a tint: "promised but still here" has to read as different in
    kind from money that has actually gone, not just a paler version of it. */

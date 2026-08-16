@@ -356,14 +356,8 @@ export function buildSeed() {
     { id: "inc-2", memberId: "sara", label: "Sara — salary", kind: "salary",
       amount: 324300, grossAmount: 708300, savingsAmount: 173900,
       isRecurring: true, month: null },
-    { id: "inc-5", memberId: "leon", label: "Trading — realized gains", kind: "trading",
-      amount: 42350, isRecurring: false, month: "2026-07" },
-    { id: "inc-6", memberId: "sara", label: "Freelance design project", kind: "side_hustle",
-      amount: 90000, isRecurring: false, month: "2026-07" },
-    { id: "inc-7", memberId: null, label: "2025 tax return", kind: "tax_return",
-      amount: 318000, isRecurring: false, month: "2026-08" },
-    { id: "inc-8", memberId: "leon", label: "Trading — realized gains", kind: "trading",
-      amount: 18800, isRecurring: false, month: "2026-08" },
+    // No seeded one-offs: the same chain lands every month. Extra income is
+    // recorded as it happens, from the "+ add" on the joint account.
   ];
 
   return {

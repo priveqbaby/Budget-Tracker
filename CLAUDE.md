@@ -20,7 +20,7 @@ Next.js (App Router) + TypeScript + Tailwind v4 · Supabase (Postgres, RLS, magi
 - Dedup is count-aware per source: hash (date, amount, normalized description), insert only count differences. Never drop same-day duplicate purchases.
 - Card payments (`kind = payment`) are excluded from spend by default; refunds count as negative spend.
 - Merchant rules match exactly on the normalized string; normalization lives in `lib/import/normalize.ts`.
-- `monthFlow()` splits the month into spent · committed · free, and the three always sum to income. A fixed line counts once — the larger of its ticked amount and its card charge, never both. A month that is over has no committed left; unused cap room becomes free.
+- The tank is the joint account in three shares — variable spend · fixed spend · surplus — and they always sum to it. Surplus is simply what is left, not a goal. `monthFlow()` also carries committed (bills not yet paid), shown as a caption rather than a segment. A fixed line counts once — the larger of its ticked amount and its card charge, never both. A month that is over has no committed left; unused cap room becomes free.
 - The income chain is one row of data per entry: `grossAmount` (combined income) → `savingsAmount` (into FHSA/TFSA/RRSP) → `amount` (what reaches the joint account, and what the tank is made of). Take-home is `amount + savingsAmount`; tax is the gap to gross. Every link falls back to the one below it, so an entry that records only what landed still balances.
 - `flowFrom()` is the one implementation of that arithmetic. The server calls it for the truth; `MonthBoard` calls it again on the client for every optimistic move, so a checkbox moves the tank before the round trip. Never fork the formula.
 

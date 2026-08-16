@@ -35,14 +35,16 @@ identity is wisteria for Leon and cyan-teal `#1a8fa8` for Sara — validated as 
 two-slot categorical pair (CVD ΔE 10.3 deutan, normal ΔE 15.5).
 
 The tank's segments are their own validated set: wisteria for variable spend,
-sky `#5aa9e6` for fixed, lily-pad `#158a57` for free and a lighter `#5cbd92` for
-the surplus slice (worst pair CVD ΔE 14.3 deutan, normal ΔE 15.2). The two
-greens are one hue at two lightnesses on purpose — free and the surplus it is
-filling are the same kind of money. Committed keeps its stripes rather than a
-colour, because it is a promise, not a category of spend.
+sky `#5aa9e6` for fixed and lily-pad `#5cbd92` for the surplus (worst pair CVD
+ΔE 14.3 deutan, normal ΔE 15.2). Three, and only three — the bar is the joint
+account cut into what each kind of spending took and what is left. Anything the
+bar cannot show without a fourth colour belongs in a caption instead: the bills
+still to pay ride under the surplus figure rather than claiming a segment.
 
-**No emoji inside the panels.** They live in the background field only. A face
-in a row that carries a number reads as decoration applied to data.
+**One emoji, on purpose.** A money sign marks variable spend — the line the
+household actually steers — in both the tank's legend and the hero heading, so
+the two read as the same thing. Everything else stays in the background field:
+a face in a row that carries a number reads as decoration applied to data.
 
 ## Whimsy, itemised
 
