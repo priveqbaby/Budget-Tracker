@@ -576,3 +576,9 @@ body {
   70%  { opacity: 1; transform: translateX(-50%) translateY(6px) scale(1); }
   100% { opacity: 0; transform: translateX(-50%) translateY(26px) scale(.96); }
 }
+
+/* Wrapped onto a second line, an arrow leads with nothing before it. Below the
+   wrap point the reading order alone carries the chain. */
+@media (max-width: 700px) {
+  .chain-arrow { display: none; }
+}

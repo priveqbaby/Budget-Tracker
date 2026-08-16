@@ -145,7 +145,7 @@ export default async function Dashboard({
         isPlanned={s.income.isPlanned}
         plannedSurplus={s.income.plannedSurplus}
         monthIsOver={s.elapsedFraction >= 1}
-        grossIncome={s.income.gross}
+        chain={{ gross: s.income.gross, takeHome: s.income.takeHome, intoSavings: s.income.intoSavings }}
         uncategorized={s.uncategorized.map(toDto)}
         historySlot={
           <section key="history" className="settle settle-4">

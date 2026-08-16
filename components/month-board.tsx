@@ -80,7 +80,7 @@ export function MonthBoard({
   isPlanned,
   plannedSurplus,
   monthIsOver,
-  grossIncome,
+  chain,
   uncategorized,
   historySlot,
 }: {
@@ -96,8 +96,8 @@ export function MonthBoard({
   isPlanned: boolean;
   plannedSurplus: number;
   monthIsOver: boolean;
-  /** Earned before tax; the header shows it next to what actually landed. */
-  grossIncome: number;
+  /** The structural links above the joint account, for the header's chain. */
+  chain: { gross: number; takeHome: number; intoSavings: number };
   uncategorized: TxnDto[];
   historySlot: ReactNode;
 }) {
@@ -207,7 +207,7 @@ export function MonthBoard({
       <MonthFlowCard
         flow={flow}
         members={members}
-        grossIncome={grossIncome}
+        chain={chain}
         byMember={board.byMember}
         pulse={pulse}
         onAddIncome={onAddIncome}

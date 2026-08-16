@@ -34,6 +34,12 @@ export interface IncomeEntry {
    * Absent means nothing was withheld, so gross and net are the same number.
    */
   grossAmount?: number | null;
+  /**
+   * Diverted into investments before anything reaches the household budget —
+   * FHSA, TFSA, RRSP. `amount` is what is left after this, so take-home is
+   * `amount + savingsAmount` and tax is `grossAmount − take-home`.
+   */
+  savingsAmount?: number | null;
   /** Recurring entries apply to every month and carry no month of their own. */
   isRecurring: boolean;
   month: string | null; // YYYY-MM for one-offs

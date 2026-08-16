@@ -52,8 +52,16 @@ export interface MonthSummary {
    */
   income: {
     total: number;
-    /** Before tax and payroll deductions. Equals `total` when nothing was withheld. */
+    /**
+     * The chain the header reads out, in order:
+     * `gross` (combined income) → `takeHome` (after tax) → `intoSavings`
+     * (FHSA/TFSA/RRSP) → `total` (what reaches the joint account, and what the
+     * bar is made of). Each link falls back to the one below when the data for
+     * it is absent, so a household that records only what lands still balances.
+     */
     gross: number;
+    takeHome: number;
+    intoSavings: number;
     byMember: Record<string, number>;
     entries: IncomeEntry[];
     allocated: number;
@@ -275,6 +283,7 @@ export function summarizeMonth(
   // income strip and the overage strip, which must always agree (PRD v3 §2.2).
   const monthIncome = incomeForMonth(options.incomeEntries ?? [], data.month);
   const incomeTotal = monthIncome.reduce((s, e) => s + e.amount, 0);
+  const intoSavings = monthIncome.reduce((s, e) => s + (e.savingsAmount ?? 0), 0);
   const hasIncome = monthIncome.length > 0;
 
   // Allocated must match what the dashboard shows: fixed lines report the
@@ -311,9 +320,14 @@ export function summarizeMonth(
   }
   const income = {
     total: incomeTotal,
-    // Earned before tax and deductions. Entries with nothing withheld report
-    // their own amount, so gross is never smaller than what landed.
-    gross: monthIncome.reduce((sum, e) => sum + (e.grossAmount ?? e.amount), 0),
+    intoSavings,
+    takeHome: incomeTotal + intoSavings,
+    // Entries with nothing withheld report their own take-home, so gross is
+    // never smaller than what actually arrived.
+    gross: monthIncome.reduce(
+      (sum, e) => sum + Math.max(e.grossAmount ?? 0, e.amount + (e.savingsAmount ?? 0)),
+      0,
+    ),
     byMember: incomeByMember,
     entries: monthIncome,
     allocated,

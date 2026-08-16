@@ -42,15 +42,15 @@ export interface Pulse {
 export function MonthFlowCard({
   flow,
   members,
-  grossIncome,
+  chain,
   byMember,
   pulse,
   onAddIncome,
 }: {
   flow: MonthFlow;
   members: MemberDto[];
-  /** Earned before tax and deductions; equals income when nothing was withheld. */
-  grossIncome: number;
+  /** The four structural links above the joint account: where the money came from. */
+  chain: { gross: number; takeHome: number; intoSavings: number };
   byMember: Record<string, number>;
   /** The last money move, so the tank can show where it went. */
   pulse: Pulse | null;
@@ -64,8 +64,7 @@ export function MonthFlowCard({
   const shownFree = useCountUp(flow.free);
   const shownIncome = useCountUp(flow.income);
   const shownLeft = useCountUp(flow.left);
-  // Nothing withheld means gross is the same number; only show both when they differ.
-  const gross = Math.max(grossIncome, flow.income);
+
   const over = flow.free < 0;
   const past = flow.free - flow.plannedSurplus;
 
@@ -83,38 +82,37 @@ export function MonthFlowCard({
       </div>
 
       <div className="card px-6 py-5">
-        <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
-          <div className="flex min-w-[250px] items-start gap-8">
-            <div>
-              <div className="overline !text-[10px]">Gross</div>
-              <div className="money mt-1 text-[22px] font-semibold leading-none text-ink-secondary">
-                {formatCentsWhole(gross)}
-              </div>
-              <div className="mt-1.5 text-[11.5px] text-ink-muted">before deductions</div>
-            </div>
-            <div>
-              <div className="overline !text-[10px]">Net</div>
-              <div className="mt-1 flex items-center gap-2">
-                <span className="money text-[22px] font-semibold leading-none text-ink">
-                  {formatCentsWhole(shownIncome)}
+        {/* The chain, in the order the money actually travels. Only the last
+            link moves during the month; the four before it are structure. */}
+        <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
+          <Link label="Combined income" value={formatCentsWhole(chain.gross)} />
+          <Arrow />
+          <Link label="Take-home" value={formatCentsWhole(chain.takeHome)} />
+          <Arrow />
+          <Link label="Into savings" value={formatCentsWhole(chain.intoSavings)} />
+          <Arrow />
+          <Link
+            label="Joint account"
+            value={formatCentsWhole(shownIncome)}
+            strong
+            after={<AddIncome members={members} onAdd={onAddIncome} />}
+          />
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+          <div className="flex flex-wrap gap-x-3.5 gap-y-1 text-[12px] text-ink-muted">
+            {members.map((m) =>
+              byMember[m.id] ? (
+                <span key={m.id}>
+                  {m.displayName} <span className="money">{formatCentsWhole(byMember[m.id])}</span>
                 </span>
-                <AddIncome members={members} onAdd={onAddIncome} />
-              </div>
-              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-[11.5px] text-ink-muted">
-                {members.map((m) =>
-                  byMember[m.id] ? (
-                    <span key={m.id}>
-                      {m.displayName} <span className="money">{formatCentsWhole(byMember[m.id])}</span>
-                    </span>
-                  ) : null,
-                )}
-                {byMember.household ? (
-                  <span>
-                    Joint <span className="money">{formatCentsWhole(byMember.household)}</span>
-                  </span>
-                ) : null}
-              </div>
-            </div>
+              ) : null,
+            )}
+            {byMember.household ? (
+              <span>
+                Joint <span className="money">{formatCentsWhole(byMember.household)}</span>
+              </span>
+            ) : null}
           </div>
 
           <div className="flex items-start gap-7 text-right">
@@ -123,7 +121,7 @@ export function MonthFlowCard({
             <div>
               <div className="overline !text-[10px]">Still in the account</div>
               <div
-                className={`money mt-1 text-[30px] font-semibold leading-none ${
+                className={`money mt-1 text-[26px] font-semibold leading-none ${
                   flow.left < 0 ? "status-over" : "text-ink"
                 }`}
               >
@@ -136,9 +134,9 @@ export function MonthFlowCard({
               )}
             </div>
             <div>
-              <div className="overline !text-[10px]">Free</div>
+              <div className="overline !text-[10px]">Left over</div>
               <div
-                className={`money mt-1 text-[30px] font-semibold leading-none ${
+                className={`money mt-1 text-[26px] font-semibold leading-none ${
                   over ? "status-over" : flow.goalMet ? "status-ok" : "text-ink"
                 }`}
               >
@@ -161,7 +159,7 @@ export function MonthFlowCard({
           <Key className="flowbar-variable" label="variable spend" />
           <Key className="flowbar-fixed" label="fixed spend" />
           {flow.committed > 0 && <Key className="flowbar-committed" label="still committed" />}
-          <Key className={over ? "flowbar-short" : "flowbar-free"} label="free" />
+          <Key className={over ? "flowbar-short" : "flowbar-free"} label="left over" />
           {flow.plannedSurplus > 0 && (
             <Key className="flowbar-surplus" label={`${formatCentsWhole(flow.plannedSurplus)} surplus`} />
           )}
@@ -307,6 +305,43 @@ export function StickyTank({
         </div>
       </div>
     </div>
+  );
+}
+
+/** One link in the income chain: a caption over a figure. */
+function Link({
+  label,
+  value,
+  strong = false,
+  after,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+  after?: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="overline !text-[9.5px]">{label}</div>
+      <div className="mt-1 flex items-center gap-1.5">
+        <span
+          className={`money text-[19px] font-semibold leading-none ${
+            strong ? "text-ink" : "text-ink-secondary"
+          }`}
+        >
+          {value}
+        </span>
+        {after}
+      </div>
+    </div>
+  );
+}
+
+function Arrow() {
+  return (
+    <svg width="13" height="10" viewBox="0 0 13 10" aria-hidden className="chain-arrow mb-[3px] shrink-0 text-hairline-deep">
+      <path d="M1 5h10M8 1.5 11.5 5 8 8.5" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 

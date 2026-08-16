@@ -104,6 +104,47 @@ describe("income and derived surplus (PRD v3)", () => {
   });
 });
 
+describe("the income chain the header reads out", () => {
+  const salary = (over: Partial<IncomeEntry>): IncomeEntry => ({
+    id: "s1", memberId: "leon", label: "salary", kind: "salary",
+    amount: 337300, grossAmount: 757600, savingsAmount: 182600,
+    isRecurring: true, month: null, ...over,
+  });
+
+  it("gross → take-home → into savings → joint account, in that order", () => {
+    const s = summarizeMonth(monthData(), categories, "2026-08-14", {
+      incomeEntries: [
+        salary({}),
+        salary({ id: "s2", memberId: "sara", amount: 324300, grossAmount: 708300, savingsAmount: 173900 }),
+      ],
+    });
+    expect(s.income.gross).toBe(1465900);       // $14,659 combined
+    expect(s.income.takeHome).toBe(1018100);    // $10,181 after tax
+    expect(s.income.intoSavings).toBe(356500);  // $3,565 into FHSA/TFSA/RRSP
+    expect(s.income.total).toBe(661600);        // $6,616 reaching the budget
+    // The links close: take-home less savings is what the budget runs on.
+    expect(s.income.takeHome - s.income.intoSavings).toBe(s.income.total);
+  });
+
+  it("an entry with nothing withheld reports itself at every link", () => {
+    const s = summarizeMonth(monthData(), categories, "2026-08-14", {
+      incomeEntries: [oneOff(318000, "2026-08")],
+    });
+    expect(s.income.gross).toBe(318000);
+    expect(s.income.takeHome).toBe(318000);
+    expect(s.income.intoSavings).toBe(0);
+    expect(s.income.total).toBe(318000);
+  });
+
+  it("gross is never smaller than what actually arrived", () => {
+    // A bad gross figure must not make the chain read backwards.
+    const s = summarizeMonth(monthData(), categories, "2026-08-14", {
+      incomeEntries: [salary({ grossAmount: 1000 })],
+    });
+    expect(s.income.gross).toBe(s.income.takeHome);
+  });
+});
+
 describe("month flow — the tank the dashboard draws", () => {
   const flowOf = (
     data: MonthData,
