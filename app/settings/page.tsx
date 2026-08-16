@@ -91,7 +91,7 @@ export default async function SettingsPage() {
               <div key={m.id} className="flex items-center gap-3 px-5 py-3">
                 <span
                   className="flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-bold text-white"
-                  style={{ background: m.id === "leon" ? "#6b62c9" : "#3f7f96" }}
+                  style={{ background: m.id === "leon" ? "#6b62c9" : "#1a8fa8" }}
                 >
                   {m.displayName[0]}
                 </span>

@@ -80,7 +80,8 @@ export function TxnActions({
 
       {open && (
         <div
-          className="absolute right-0 top-7 z-30 w-[232px] rounded-[10px] border border-hairline bg-surface p-1.5 shadow-pop"
+          // Opaque: the translucent surface let the rows behind bleed through.
+          className="absolute right-0 top-7 z-30 w-[232px] rounded-[10px] border border-hairline bg-white p-1.5 shadow-pop"
           onClick={(e) => e.stopPropagation()}
         >
           <label className="block px-2 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-wider text-ink-muted">

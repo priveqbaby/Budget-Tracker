@@ -82,13 +82,10 @@ export function Sidebar({ demo }: { demo: boolean }) {
           ))}
         </nav>
       </div>
-      <div className="px-2">
-        {demo ? (
-          <div className="rounded-lg border border-hairline bg-sunken px-3 py-2.5 text-[12px] leading-snug text-ink-secondary">
-            <span className="font-semibold text-ink">Demo data.</span> Set the Supabase env
-            vars to go live.
-          </div>
-        ) : (
+      {/* Nothing at the foot in demo mode — the note, the reset link and the
+          tagline were noise. Sign out is the only thing that earns the space. */}
+      {!demo && (
+        <div className="px-2">
           <button
             type="button"
             onClick={() => startTransition(() => signOut())}
@@ -96,11 +93,8 @@ export function Sidebar({ demo }: { demo: boolean }) {
           >
             Sign out
           </button>
-        )}
-        <div className="mt-3 text-[11px] text-ink-muted">
-          Every card, one budget.
         </div>
-      </div>
+      )}
     </aside>
   );
 }

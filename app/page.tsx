@@ -20,12 +20,14 @@ export default async function Dashboard({
   const store = await getStore();
   const todayIso = isDemoMode() ? DEMO_TODAY : new Date().toISOString().slice(0, 10);
 
-  const [household, categories, months, incomeEntries] = await Promise.all([
+  const [household, categories, months, incomeEntries, sources] = await Promise.all([
     store.getHousehold(),
     store.listCategories(),
     store.listMonths(),
     store.listIncomeEntries(),
+    store.listSources(),
   ]);
+  const sourceOptions = sources.map((s) => ({ id: s.id, label: s.label }));
 
   const month = m && /^\d{4}-\d{2}$/.test(m) ? m : (months[months.length - 1] ?? todayIso.slice(0, 7));
   const monthIndex = months.indexOf(month);
@@ -87,6 +89,13 @@ export default async function Dashboard({
   const categoryOptions = categories
     .filter((c) => !c.isSurplus)
     .map((c) => ({ id: c.id, name: c.name }));
+
+  // A quick-add while browsing March must land in March, not today.
+  const lastDayOfMonth = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate();
+  const quickAddDate =
+    month === todayIso.slice(0, 7)
+      ? todayIso
+      : `${month}-${String(lastDayOfMonth).padStart(2, "0")}`;
 
   const fixedPaid = s.fixed.filter((f) => f.isPaid).length;
   const remaining = s.totalVariableCap - s.totalVariableSpent;
@@ -178,6 +187,8 @@ export default async function Dashboard({
             rows={rows}
             members={household.members}
             categories={categoryOptions}
+            sources={sourceOptions}
+            defaultDate={quickAddDate}
             elapsedFraction={isCurrent ? s.elapsedFraction : 1}
           />
           <UncategorizedRow
@@ -208,9 +219,12 @@ export default async function Dashboard({
       <div className="mt-8 grid gap-8 lg:grid-cols-[380px_minmax(0,1fr)]">
         <section className="settle settle-3">
           <h2 className="overline mb-2.5 px-1">Fixed items</h2>
-          <div className="card overflow-hidden">
+          {/* No overflow-hidden: the quick-add panel overflows the card. */}
+          <div className="card">
             <FixedChecklist
               month={month}
+              sources={sourceOptions}
+              defaultDate={quickAddDate}
               items={s.fixed.map((f) => ({
                 categoryId: f.category.id,
                 name: f.category.name,

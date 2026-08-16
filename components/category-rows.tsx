@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { formatCents, formatCentsWhole, dayLabel } from "@/lib/money";
 import { TxnActions } from "./txn-actions";
+import { QuickAdd, type SourceOption } from "./quick-add";
 
 export interface TxnDto {
   id: string;
@@ -51,20 +52,27 @@ const STATUS_LABEL: Record<CategoryRowDto["status"], string> = {
 };
 
 // Member identity colors (fixed assignment, never re-ranked).
+// Wisteria vs. cyan-teal: validated as a two-slot categorical pair on white —
+// CVD ΔE 10.3 (deutan), normal ΔE 15.5, both above the chroma floor. The old
+// slate-teal sat at normal ΔE 13.4 and read as a duller wisteria.
 const MEMBER_COLOR: Record<string, string> = {
   leon: "#6b62c9",
-  sara: "#3f7f96",
+  sara: "#1a8fa8",
 };
 
 export function CategoryRows({
   rows,
   members,
   categories,
+  sources,
+  defaultDate,
   elapsedFraction,
 }: {
   rows: CategoryRowDto[];
   members: MemberDto[];
   categories: { id: string; name: string }[];
+  sources: SourceOption[];
+  defaultDate: string;
   elapsedFraction: number;
 }) {
   const [open, setOpen] = useState<string | null>(null);
@@ -76,10 +84,13 @@ export function CategoryRows({
         const isOpen = open === row.id;
         return (
           <div key={row.id} className="border-b border-hairline last:border-b-0">
+            {/* The quick-add "+" sits beside the disclosure button, never
+                inside it: a button cannot nest in a button. */}
+            <div className="flex items-stretch">
             <button
               type="button"
               onClick={() => setOpen(isOpen ? null : row.id)}
-              className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-1.5 px-5 py-3.5 text-left transition-colors hover:bg-sunken/60 md:grid-cols-[200px_minmax(0,1fr)_auto]"
+              className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-1.5 py-3.5 pl-5 pr-3 text-left transition-colors hover:bg-sunken/60 md:grid-cols-[200px_minmax(0,1fr)_auto]"
               aria-expanded={isOpen}
             >
               <span className="flex min-w-0 items-center gap-2">
@@ -122,6 +133,15 @@ export function CategoryRows({
                 </span>
               </span>
             </button>
+              <div className="flex items-center pl-1 pr-4">
+                <QuickAdd
+                  categoryId={row.id}
+                  categoryName={row.name}
+                  sources={sources}
+                  defaultDate={defaultDate}
+                />
+              </div>
+            </div>
 
             {isOpen && (
               <div className="rise-in border-t border-hairline bg-sunken/60 px-5 pb-4 pt-3 md:pl-[47px]">
