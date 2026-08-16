@@ -3,7 +3,7 @@ import "@fontsource/titillium-web/400.css";
 import "@fontsource/titillium-web/600.css";
 import "@fontsource/titillium-web/700.css";
 import "./globals.css";
-import { MobileTopBar, Sidebar } from "@/components/sidebar";
+import { DemoBanner, MobileTopBar, Sidebar } from "@/components/sidebar";
 import { isDemoMode } from "@/lib/data";
 
 export const metadata: Metadata = {
@@ -43,6 +43,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <span className="namebubble namebubble-sm namebubble-7">Sara</span>
           <span className="namebubble namebubble-sm namebubble-8">Leon</span>
         </div>
+        <DemoBanner demo={isDemoMode()} />
         <div className="mx-auto flex min-h-screen max-w-[1200px] flex-col md:flex-row">
           <MobileTopBar />
           <Sidebar demo={isDemoMode()} />

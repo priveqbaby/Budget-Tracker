@@ -109,6 +109,19 @@ async function validateIncome(
   if (input.kind !== undefined && !INCOME_KINDS.includes(input.kind)) {
     throw new Error("Unknown income kind");
   }
+  // The chain only reads in one direction: gross covers take-home, and
+  // take-home is what landed plus whatever was diverted into savings.
+  if (input.savingsAmount != null) {
+    if (!Number.isFinite(input.savingsAmount) || input.savingsAmount < 0) {
+      throw new Error("Savings must be zero or more");
+    }
+  }
+  if (input.grossAmount != null) {
+    const takeHome = (input.amount ?? 0) + (input.savingsAmount ?? 0);
+    if (!Number.isFinite(input.grossAmount) || input.grossAmount < takeHome) {
+      throw new Error("Gross has to cover what landed plus what went to savings");
+    }
+  }
   if (input.isRecurring !== undefined) {
     if (input.isRecurring && input.month) {
       throw new Error("A recurring entry applies to every month");

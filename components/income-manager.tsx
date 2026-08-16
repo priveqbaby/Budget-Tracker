@@ -142,14 +142,28 @@ function AddIncome({ members, defaultMonth }: { members: MemberDto[]; defaultMon
   const [amount, setAmount] = useState("");
   const [kind, setKind] = useState<IncomeKind>("tax_return");
   const [memberId, setMemberId] = useState<string>("");
+  const [gross, setGross] = useState("");
+  const [savings, setSavings] = useState("");
   const [isRecurring, setIsRecurring] = useState(false);
   const [month, setMonth] = useState(defaultMonth);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
+  const toCents = (v: string) => {
+    const raw = v.replace(/[$,\s]/g, "");
+    return raw.length > 0 ? Math.round(Number(raw) * 100) : null;
+  };
   const raw = amount.replace(/[$,\s]/g, "");
   const cents = Math.round(Number(raw) * 100);
+  const grossCents = toCents(gross);
+  const savingsCents = toCents(savings);
+  // Gross is what was earned before anything came off it, so it can never be
+  // less than what landed plus what was diverted on the way.
+  const chainOk =
+    (grossCents === null || (Number.isFinite(grossCents) && grossCents >= cents + (savingsCents ?? 0))) &&
+    (savingsCents === null || (Number.isFinite(savingsCents) && savingsCents >= 0));
   const valid =
+    chainOk &&
     label.trim().length > 0 &&
     raw.length > 0 &&
     Number.isFinite(cents) &&
@@ -176,6 +190,8 @@ function AddIncome({ members, defaultMonth }: { members: MemberDto[]; defaultMon
           await addIncomeEntry({
             label: label.trim(),
             amount: cents,
+            grossAmount: grossCents,
+            savingsAmount: savingsCents,
             kind,
             memberId: memberId || null,
             isRecurring,
@@ -183,6 +199,8 @@ function AddIncome({ members, defaultMonth }: { members: MemberDto[]; defaultMon
           });
           setLabel("");
           setAmount("");
+          setGross("");
+          setSavings("");
           setOpen(false);
           router.refresh();
         });
@@ -220,6 +238,51 @@ function AddIncome({ members, defaultMonth }: { members: MemberDto[]; defaultMon
             className="field money text-right"
           />
         </label>
+      </div>
+
+      {/* The rest of the chain. Both optional — leave them blank when nothing
+          was withheld and gross, take-home and what landed are one number. */}
+      <div className="mt-2.5 flex flex-wrap items-end gap-2">
+        <label className="w-[150px]">
+          <span className="mb-1 block text-[11.5px] font-semibold text-ink-secondary">
+            Gross <span className="font-normal text-ink-muted">optional</span>
+          </span>
+          <input
+            value={gross}
+            onChange={(e) => setGross(e.target.value)}
+            inputMode="decimal"
+            placeholder="before tax"
+            className="field money text-right"
+          />
+        </label>
+        <label className="w-[150px]">
+          <span className="mb-1 block text-[11.5px] font-semibold text-ink-secondary">
+            Into savings <span className="font-normal text-ink-muted">optional</span>
+          </span>
+          <input
+            value={savings}
+            onChange={(e) => setSavings(e.target.value)}
+            inputMode="decimal"
+            placeholder="FHSA/TFSA/RRSP"
+            className="field money text-right"
+          />
+        </label>
+        <p className="min-w-[180px] flex-1 pb-2 text-[11.5px] leading-snug text-ink-muted">
+          {grossCents !== null && cents > 0 ? (
+            chainOk ? (
+              <>
+                Take-home {formatCentsWhole(cents + (savingsCents ?? 0))} · tax{" "}
+                {formatCentsWhole(grossCents - cents - (savingsCents ?? 0))}
+              </>
+            ) : (
+              <span className="status-over">
+                Gross has to cover what landed plus what went to savings.
+              </span>
+            )
+          ) : (
+            <>Amount is what reaches the joint account.</>
+          )}
+        </p>
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-end gap-2">

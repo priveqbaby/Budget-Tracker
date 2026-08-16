@@ -38,6 +38,21 @@ const links = [
   },
 ];
 
+/**
+ * Demo mode means the numbers on screen are seeded fiction. That is fine while
+ * previewing and dangerous once the app is deployed for real use — a missing
+ * env var would otherwise look like a working, empty budget. Say so plainly.
+ */
+export function DemoBanner({ demo }: { demo: boolean }) {
+  const pathname = usePathname();
+  if (!demo || AUTH_PATHS.includes(pathname)) return null;
+  return (
+    <div className="border-b border-warn-track bg-warn-track px-5 py-2 text-center text-[12.5px] font-semibold text-ink">
+      Demo data — no database connected. Nothing you change here is saved.
+    </div>
+  );
+}
+
 export function MobileTopBar() {
   const pathname = usePathname();
   if (AUTH_PATHS.includes(pathname)) return null;
