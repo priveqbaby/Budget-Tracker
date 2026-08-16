@@ -20,6 +20,7 @@ Next.js (App Router) + TypeScript + Tailwind v4 · Supabase (Postgres, RLS, magi
 - Dedup is count-aware per source: hash (date, amount, normalized description), insert only count differences. Never drop same-day duplicate purchases.
 - Card payments (`kind = payment`) are excluded from spend by default; refunds count as negative spend.
 - Merchant rules match exactly on the normalized string; normalization lives in `lib/import/normalize.ts`.
+- `monthFlow()` splits the month into spent · committed · free, and the three always sum to income. A fixed line counts once — the larger of its ticked amount and its card charge, never both. A month that is over has no committed left; unused cap room becomes free.
 
 ## Supabase gotcha
 

@@ -40,6 +40,7 @@ two-slot categorical pair (CVD ΔE 10.3 deutan, normal ΔE 15.5).
 |---|---|
 | Page load | Sections settle up in sequence |
 | Hero figure | Counts up to the real number |
+| Money-this-month tank | Segments ease to their new widths; income and free count up |
 | Cards | Light sweeps across the glass on hover |
 | Nav | Pills glide right; the active one is a lit gradient |
 | Category rows | Slide right and lift off the ground |

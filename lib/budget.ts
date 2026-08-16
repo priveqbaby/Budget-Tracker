@@ -67,6 +67,85 @@ export interface MonthSummary {
   verdict: { status: BudgetStatus; headline: string };
 }
 
+/**
+ * The month as one tank of money: what came in, what has left, what is still
+ * promised, and what is genuinely yours at the end of it.
+ *
+ * The three parts always sum to income, so the bar the dashboard draws from
+ * this can never lie about the total.
+ */
+export interface MonthFlow {
+  /** Everything recorded this month — or the plan's implied income when nothing is. */
+  income: number;
+  /** True when no income was recorded and `income` is the plan's figure. */
+  isPlanned: boolean;
+  /** Money already gone: variable spend, unfiled spend, and fixed lines paid or charged. */
+  spent: number;
+  variableSpent: number;
+  fixedSpent: number;
+  /** Still promised: unpaid fixed lines and the unspent room left in every cap. */
+  committed: number;
+  /** income − spent. What is still in the account right now. */
+  left: number;
+  /** income − spent − committed. Yours once this month's plan is honoured. */
+  free: number;
+  /** The plan's surplus — the mark `free` is trying to clear. */
+  plannedSurplus: number;
+  goalMet: boolean;
+}
+
+/**
+ * A fixed line's money is out when it is ticked paid or when a statement row
+ * lands on it, whichever is larger — never both, or every bill on a card would
+ * be counted twice.
+ */
+function fixedOutflow(f: MonthSummary["fixed"][number]): number {
+  return Math.max(f.isPaid ? f.amount : 0, f.spent, 0);
+}
+
+export function monthFlow(s: MonthSummary): MonthFlow {
+  // With nothing recorded, a $0 tank would be useless and would read as a
+  // catastrophe; fall back to the income the plan implies and say so.
+  const income = s.income.isPlanned
+    ? s.income.allocated + s.income.plannedSurplus
+    : s.income.total;
+
+  const fixedSpent = s.fixed.reduce((sum, f) => sum + fixedOutflow(f), 0);
+  const fixedCommitted = s.fixed.reduce(
+    (sum, f) => sum + Math.max(0, f.amount - fixedOutflow(f)),
+    0,
+  );
+  // Unfiled spend has no cap to come out of, so it draws straight from `free`
+  // until it is filed onto a line that still has room.
+  const variableSpent = s.totalVariableSpent;
+  const variableCommitted = s.variable.reduce(
+    (sum, v) => sum + Math.max(0, v.cap - v.spent),
+    0,
+  );
+
+  const spent = variableSpent + fixedSpent;
+  // A month that is over has nothing left to promise: room the caps never used
+  // was money kept, so in hindsight it is free, not committed. Without this a
+  // finished month would still claim half its income was spoken for.
+  const monthIsOver = s.elapsedFraction >= 1;
+  const committed = monthIsOver ? 0 : fixedCommitted + variableCommitted;
+  const left = income - spent;
+  const free = left - committed;
+
+  return {
+    income,
+    isPlanned: s.income.isPlanned,
+    spent,
+    variableSpent,
+    fixedSpent,
+    committed,
+    left,
+    free,
+    plannedSurplus: s.income.plannedSurplus,
+    goalMet: free >= s.income.plannedSurplus,
+  };
+}
+
 function daysInMonth(month: string): number {
   const [y, m] = month.split("-").map(Number);
   return new Date(Date.UTC(y, m, 0)).getUTCDate();

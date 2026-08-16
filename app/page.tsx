@@ -1,13 +1,12 @@
 import Link from "next/link";
 import { getStore, isDemoMode } from "@/lib/data";
 import { DEMO_TODAY } from "@/lib/data/demo-seed";
-import { summarizeMonth } from "@/lib/budget";
+import { monthFlow, summarizeMonth } from "@/lib/budget";
 import { formatCents, formatCentsWhole, monthLabel } from "@/lib/money";
 import { CategoryRows, type CategoryRowDto, type TxnDto } from "@/components/category-rows";
 import { FixedChecklist } from "@/components/fixed-checklist";
 import { HistoryChart, type HistoryPointDto } from "@/components/history-chart";
-import { SurplusStrip } from "@/components/surplus-strip";
-import { IncomeStrip } from "@/components/income-strip";
+import { MonthFlowCard } from "@/components/month-flow";
 import { MonthJournal } from "@/components/month-journal";
 import { UncategorizedRow } from "@/components/uncategorized-row";
 
@@ -39,8 +38,8 @@ export default async function Dashboard({
     incomeEntries,
     savingsTarget: household.savingsTarget,
   });
+  const flow = monthFlow(s);
   const note = await store.getMonthNote(month);
-  const surplusCategory = categories.find((c) => c.isSurplus);
 
   // History across every retained month (goal 4: is food drifting up?).
   const history: HistoryPointDto[] = [];
@@ -127,8 +126,19 @@ export default async function Dashboard({
         </span>
       </header>
 
+      {/* The month as one tank: what came in, what has gone, what is free. */}
+      <MonthFlowCard
+        flow={flow}
+        month={month}
+        members={household.members.map((m) => ({ id: m.id, displayName: m.displayName }))}
+        byMember={s.income.byMember}
+        entries={s.income.entries}
+        savingsTarget={household.savingsTarget}
+        drawn={s.surplus?.drawn ?? 0}
+      />
+
       {/* Hero */}
-      <section className="card settle settle-1 mt-6 px-7 py-6">
+      <section className="card settle settle-2 mt-8 px-7 py-6">
         <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
           <div className="min-w-[240px]">
             <div className="overline">Variable spend</div>
@@ -197,23 +207,6 @@ export default async function Dashboard({
           />
         </div>
       </section>
-
-      <IncomeStrip
-        income={s.income}
-        members={household.members.map((m) => ({ id: m.id, displayName: m.displayName }))}
-        surplusName={surplusCategory?.name ?? "surplus"}
-      />
-
-      {s.surplus && surplusCategory && (
-        <SurplusStrip
-          name={surplusCategory.name}
-          cap={s.surplus.cap}
-          drawn={s.surplus.drawn}
-          left={s.surplus.left}
-          isDerived={s.surplus.isDerived}
-          planned={s.surplus.planned}
-        />
-      )}
 
       {/* Fixed + history side by side */}
       <div className="mt-8 grid gap-8 lg:grid-cols-[380px_minmax(0,1fr)]">

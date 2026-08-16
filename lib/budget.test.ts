@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { summarizeMonth } from "./budget";
+import { monthFlow, summarizeMonth } from "./budget";
 import type { Category, IncomeEntry, MonthData, Transaction } from "./data/types";
 
 const cat = (over: Partial<Category> & Pick<Category, "id" | "name" | "monthlyCap">): Category => ({
@@ -101,5 +101,116 @@ describe("income and derived surplus (PRD v3)", () => {
     // Spend filed against the surplus line belongs to no variable category, so it
     // is neither counted in a cap nor silently dropped.
     expect(s.totalVariableSpent).toBe(0);
+  });
+});
+
+describe("month flow — the tank the dashboard draws", () => {
+  const flowOf = (
+    data: MonthData,
+    entries: IncomeEntry[] = [recurring(250000)],
+  ) => monthFlow(summarizeMonth(data, categories, "2026-08-14", { incomeEntries: entries }));
+
+  it("the three parts always add up to income", () => {
+    const f = flowOf(monthData([txn({ amount: 12345 })]));
+    expect(f.spent + f.committed + f.free).toBe(f.income);
+  });
+
+  it("nothing spent: everything is committed and free is the planned surplus", () => {
+    const f = flowOf(monthData());
+    expect(f.spent).toBe(0);
+    expect(f.committed).toBe(200000); // rent $1,500 unpaid + food's whole $500 cap
+    expect(f.free).toBe(50000);
+    expect(f.goalMet).toBe(true);
+  });
+
+  it("spending inside a cap moves money from committed to spent, leaving free alone", () => {
+    const f = flowOf(monthData([txn({ amount: 30000 })]));
+    expect(f.spent).toBe(30000);
+    expect(f.committed).toBe(170000);
+    expect(f.free).toBe(50000); // the plan is being honoured, so the surplus holds
+  });
+
+  it("spending past a cap eats free and misses the goal", () => {
+    const f = flowOf(monthData([txn({ amount: 90000 })])); // $900 against a $500 cap
+    expect(f.spent).toBe(90000);
+    expect(f.committed).toBe(150000); // food has no room left; only rent is still promised
+    expect(f.free).toBe(10000);
+    expect(f.goalMet).toBe(false);
+  });
+
+  it("extra income lifts free without touching a cap", () => {
+    const before = flowOf(monthData([txn({ amount: 90000 })]));
+    const after = flowOf(monthData([txn({ amount: 90000 })]), [
+      recurring(250000),
+      oneOff(100000, "2026-08"),
+    ]);
+    expect(after.income - before.income).toBe(100000);
+    expect(after.free - before.free).toBe(100000);
+    expect(after.committed).toBe(before.committed);
+    expect(after.goalMet).toBe(true);
+  });
+
+  it("a fixed line ticked paid counts once, not twice, when its charge also landed", () => {
+    const data: MonthData = {
+      month: "2026-08",
+      transactions: [txn({ categoryId: "rent", amount: 149000 })],
+      fixedPayments: [{ id: "fp1", categoryId: "rent", month: "2026-08", amount: 150000, isPaid: true }],
+      monthCaps: [],
+    };
+    const f = monthFlow(
+      summarizeMonth(data, categories, "2026-08-14", { incomeEntries: [recurring(250000)] }),
+    );
+    // The larger of the two, never the sum: $1,500, not $2,990.
+    expect(f.fixedSpent).toBe(150000);
+    expect(f.spent).toBe(150000);
+    expect(f.committed).toBe(50000); // food's cap only
+    expect(f.free).toBe(50000);
+  });
+
+  it("an unpaid fixed line whose charge already landed is spent, not committed", () => {
+    const data: MonthData = {
+      month: "2026-08",
+      transactions: [txn({ categoryId: "rent", amount: 150000 })],
+      fixedPayments: [{ id: "fp1", categoryId: "rent", month: "2026-08", amount: 150000, isPaid: false }],
+      monthCaps: [],
+    };
+    const f = monthFlow(
+      summarizeMonth(data, categories, "2026-08-14", { incomeEntries: [recurring(250000)] }),
+    );
+    expect(f.fixedSpent).toBe(150000);
+    expect(f.committed).toBe(50000);
+  });
+
+  it("unfiled spend draws straight from free, and filing it gives free back", () => {
+    const unfiled = flowOf(monthData([txn({ categoryId: null, amount: 20000 })]));
+    expect(unfiled.free).toBe(30000); // $500 surplus less the $200 nobody has filed
+
+    const filed = flowOf(monthData([txn({ categoryId: "food", amount: 20000 })]));
+    expect(filed.free).toBe(50000); // absorbed by Food's cap, which had room
+  });
+
+  it("a finished month keeps its unspent caps as free, not as committed", () => {
+    // Same spend, read from September: June is over, so the $200 Food never
+    // used and the rent that was never paid are money the household still has.
+    const data: MonthData = { month: "2026-06", transactions: [txn({ date: "2026-06-05", amount: 30000 })], fixedPayments: [], monthCaps: [] };
+    const f = monthFlow(
+      summarizeMonth(data, categories, "2026-09-02", { incomeEntries: [recurring(250000)] }),
+    );
+    expect(f.committed).toBe(0);
+    expect(f.spent).toBe(30000);
+    expect(f.free).toBe(220000);
+  });
+
+  it("falls back to the plan's income when nothing is recorded", () => {
+    const f = monthFlow(summarizeMonth(monthData(), categories, "2026-08-14"));
+    expect(f.isPlanned).toBe(true);
+    expect(f.income).toBe(250000); // $2,000 allocated + $500 planned surplus
+    expect(f.free).toBe(50000);
+  });
+
+  it("income that does not cover the plan drives free negative", () => {
+    const f = flowOf(monthData(), [recurring(150000)]);
+    expect(f.free).toBe(-50000);
+    expect(f.goalMet).toBe(false);
   });
 });

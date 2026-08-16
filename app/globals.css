@@ -283,6 +283,49 @@ body {
   .navlink:hover, .btn:hover { transform: none; }
 }
 
+/* The month as one tank of money: spent · still committed · free. The three
+   widths are percentages of income, so they always fill the track exactly. */
+.flowbar {
+  position: relative;
+  display: flex;
+  height: 22px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--color-sunken);
+  box-shadow: inset 0 0 0 1px rgba(22,38,47,.07);
+}
+.flowbar-seg {
+  display: block;
+  height: 100%;
+  transition: width 520ms var(--lift);
+}
+.flowbar-spent { background: var(--color-accent); }
+.flowbar-free { background: var(--color-ok); }
+.flowbar-short { background: var(--color-danger); }
+/* Stripes, not a tint: "promised but still here" has to read as different in
+   kind from money that has actually gone, not just a paler version of it. */
+.flowbar-committed {
+  background: repeating-linear-gradient(
+    -45deg,
+    #cfd8e6 0 5px,
+    #e2e9f2 5px 10px
+  );
+}
+/* Where free would sit if it exactly matched the plan's surplus. */
+.flowbar-mark {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--color-ink);
+  box-shadow: 0 0 0 1.5px rgba(255,255,255,.85);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flowbar-seg { transition: none; }
+}
+
 /* The field behind the glass is one solid colour — no gradients, no blur —
    with money faces, hearts and the household's names drifting across it.
    Pure decoration, aria-hidden. */
