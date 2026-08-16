@@ -299,9 +299,14 @@ body {
   height: 100%;
   transition: width 520ms var(--lift);
 }
-.flowbar-spent { background: var(--color-accent); }
-.flowbar-free { background: var(--color-ok); }
-.flowbar-short { background: var(--color-danger); }
+/* Validated as a categorical set on white: worst pair CVD ΔE 14.3 (deutan),
+   normal ΔE 15.2. The two greens are one hue at two lightnesses on purpose —
+   free and the surplus it is filling are the same kind of money. */
+.flowbar-variable { background: var(--color-accent); }   /* wisteria */
+.flowbar-fixed    { background: #5aa9e6; }               /* sky */
+.flowbar-free     { background: var(--color-ok); }       /* lily pad */
+.flowbar-surplus  { background: #5cbd92; }               /* lighter lily pad */
+.flowbar-short    { background: var(--color-danger); }
 /* Stripes, not a tint: "promised but still here" has to read as different in
    kind from money that has actually gone, not just a paler version of it. */
 .flowbar-committed {
@@ -431,17 +436,6 @@ body {
   14%  { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
   70%  { opacity: 1; transform: translateX(-50%) translateY(-4px) scale(1); }
   100% { opacity: 0; transform: translateX(-50%) translateY(-26px) scale(.96); }
-}
-
-/* Where free would sit if it exactly matched the plan's surplus. */
-.flowbar-mark {
-  position: absolute;
-  top: -3px;
-  bottom: -3px;
-  width: 2px;
-  border-radius: 1px;
-  background: var(--color-ink);
-  box-shadow: 0 0 0 1.5px rgba(255,255,255,.85);
 }
 
 @media (prefers-reduced-motion: reduce) {

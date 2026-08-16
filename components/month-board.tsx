@@ -9,7 +9,7 @@ import { FixedChecklist, type FixedItemDto } from "./fixed-checklist";
 import { MonthFlowCard, StickyTank, type Pulse } from "./month-flow";
 import { UncategorizedRow } from "./uncategorized-row";
 import type { SourceOption } from "./quick-add";
-import type { IncomeEntry, IncomeKind } from "@/lib/data/types";
+import type { IncomeKind } from "@/lib/data/types";
 
 /** Everything a move can change. The tank is derived from this, never stored. */
 interface Board {
@@ -80,9 +80,7 @@ export function MonthBoard({
   isPlanned,
   plannedSurplus,
   monthIsOver,
-  entries,
-  savingsTarget,
-  drawn,
+  grossIncome,
   uncategorized,
   historySlot,
 }: {
@@ -98,9 +96,8 @@ export function MonthBoard({
   isPlanned: boolean;
   plannedSurplus: number;
   monthIsOver: boolean;
-  entries: IncomeEntry[];
-  savingsTarget: number;
-  drawn: number;
+  /** Earned before tax; the header shows it next to what actually landed. */
+  grossIncome: number;
   uncategorized: TxnDto[];
   historySlot: ReactNode;
 }) {
@@ -210,10 +207,8 @@ export function MonthBoard({
       <MonthFlowCard
         flow={flow}
         members={members}
+        grossIncome={grossIncome}
         byMember={board.byMember}
-        entries={entries}
-        savingsTarget={savingsTarget}
-        drawn={drawn}
         pulse={pulse}
         onAddIncome={onAddIncome}
       />

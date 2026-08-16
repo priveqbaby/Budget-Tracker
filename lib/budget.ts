@@ -52,6 +52,8 @@ export interface MonthSummary {
    */
   income: {
     total: number;
+    /** Before tax and payroll deductions. Equals `total` when nothing was withheld. */
+    gross: number;
     byMember: Record<string, number>;
     entries: IncomeEntry[];
     allocated: number;
@@ -89,8 +91,12 @@ export interface MonthFlow {
   left: number;
   /** income − spent − committed. Yours once this month's plan is honoured. */
   free: number;
-  /** The plan's surplus — the mark `free` is trying to clear. */
+  /** The plan's surplus — the slice at the end of the bar this month is filling. */
   plannedSurplus: number;
+  /** How much of that slice is actually filled. */
+  surplusHeld: number;
+  /** Free beyond the surplus slice — the part that is genuinely spare. */
+  freeAboveGoal: number;
   goalMet: boolean;
 }
 
@@ -141,6 +147,9 @@ export function flowFrom(p: FlowParts): MonthFlow {
   const committed = p.monthIsOver ? 0 : fixedCommitted + variableCommitted;
   const left = p.income - spent;
   const free = left - committed;
+  // The goal is the tail of the bar. Free fills it first; anything beyond is
+  // spare. A month that misses the goal leaves the tail visibly short.
+  const surplusHeld = Math.max(0, Math.min(free, p.plannedSurplus));
 
   return {
     income: p.income,
@@ -152,6 +161,8 @@ export function flowFrom(p: FlowParts): MonthFlow {
     left,
     free,
     plannedSurplus: p.plannedSurplus,
+    surplusHeld,
+    freeAboveGoal: Math.max(0, free - p.plannedSurplus),
     goalMet: free >= p.plannedSurplus,
   };
 }
@@ -300,6 +311,9 @@ export function summarizeMonth(
   }
   const income = {
     total: incomeTotal,
+    // Earned before tax and deductions. Entries with nothing withheld report
+    // their own amount, so gross is never smaller than what landed.
+    gross: monthIncome.reduce((sum, e) => sum + (e.grossAmount ?? e.amount), 0),
     byMember: incomeByMember,
     entries: monthIncome,
     allocated,

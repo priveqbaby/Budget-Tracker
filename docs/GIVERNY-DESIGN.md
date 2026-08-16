@@ -34,6 +34,16 @@ trio validated on the page surface: lily-pad green `#158a57`, Giverny gold
 identity is wisteria for Leon and cyan-teal `#1a8fa8` for Sara — validated as a
 two-slot categorical pair (CVD ΔE 10.3 deutan, normal ΔE 15.5).
 
+The tank's segments are their own validated set: wisteria for variable spend,
+sky `#5aa9e6` for fixed, lily-pad `#158a57` for free and a lighter `#5cbd92` for
+the surplus slice (worst pair CVD ΔE 14.3 deutan, normal ΔE 15.2). The two
+greens are one hue at two lightnesses on purpose — free and the surplus it is
+filling are the same kind of money. Committed keeps its stripes rather than a
+colour, because it is a promise, not a category of spend.
+
+**No emoji inside the panels.** They live in the background field only. A face
+in a row that carries a number reads as decoration applied to data.
+
 ## Whimsy, itemised
 
 | Where | What happens |

@@ -379,7 +379,8 @@ export class SupabaseStore implements DataStore {
     if (error) throw error;
     return data.map((r) => ({
       id: r.id, memberId: r.member_id, label: r.label, kind: r.kind as IncomeKind,
-      amount: r.amount, isRecurring: r.is_recurring, month: r.month,
+      amount: r.amount, grossAmount: r.gross_amount, isRecurring: r.is_recurring,
+      month: r.month,
     }));
   }
 
@@ -388,7 +389,8 @@ export class SupabaseStore implements DataStore {
       .from("income_entries")
       .insert({
         ...this.hh(), member_id: input.memberId, label: input.label, kind: input.kind,
-        amount: input.amount, is_recurring: input.isRecurring,
+        amount: input.amount, gross_amount: input.grossAmount ?? null,
+        is_recurring: input.isRecurring,
         // The schema's check constraint keeps these two in step.
         month: input.isRecurring ? null : input.month,
       })
@@ -396,7 +398,8 @@ export class SupabaseStore implements DataStore {
     if (error) throw error;
     return {
       id: data.id, memberId: data.member_id, label: data.label, kind: data.kind,
-      amount: data.amount, isRecurring: data.is_recurring, month: data.month,
+      amount: data.amount, grossAmount: data.gross_amount,
+      isRecurring: data.is_recurring, month: data.month,
     };
   }
 
@@ -408,6 +411,7 @@ export class SupabaseStore implements DataStore {
         ...(patch.label !== undefined && { label: patch.label }),
         ...(patch.kind !== undefined && { kind: patch.kind }),
         ...(patch.amount !== undefined && { amount: patch.amount }),
+        ...(patch.grossAmount !== undefined && { gross_amount: patch.grossAmount }),
         ...(patch.isRecurring !== undefined && { is_recurring: patch.isRecurring }),
         ...(patch.month !== undefined && { month: patch.month }),
       })

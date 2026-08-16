@@ -28,7 +28,12 @@ export interface IncomeEntry {
   memberId: string | null;
   label: string;
   kind: IncomeKind;
-  amount: number; // cents, positive
+  amount: number; // cents, positive — what actually lands
+  /**
+   * What was earned before tax and payroll deductions, when it is known.
+   * Absent means nothing was withheld, so gross and net are the same number.
+   */
+  grossAmount?: number | null;
   /** Recurring entries apply to every month and carry no month of their own. */
   isRecurring: boolean;
   month: string | null; // YYYY-MM for one-offs

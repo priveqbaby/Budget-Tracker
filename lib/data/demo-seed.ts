@@ -351,10 +351,13 @@ export function buildSeed() {
       amount: 150000, isRecurring: true, month: null },
     { id: "inc-2", memberId: "sara", label: "Sara — contribution floor", kind: "contribution",
       amount: 150000, isRecurring: true, month: null },
+    // Gross carries the Sankey's figures: Leon $7,576/mo, Sara $7,083/mo. The
+    // gap to net is tax, payroll deductions and the money that goes straight
+    // into FHSA/TFSA/RRSP before anything reaches the joint budget.
     { id: "inc-3", memberId: "leon", label: "Leon — salary above floor", kind: "salary",
-      amount: 217600, isRecurring: true, month: null },
+      amount: 217600, grossAmount: 607600, isRecurring: true, month: null },
     { id: "inc-4", memberId: "sara", label: "Sara — salary above floor", kind: "salary",
-      amount: 150000, isRecurring: true, month: null },
+      amount: 150000, grossAmount: 558300, isRecurring: true, month: null },
     { id: "inc-5", memberId: "leon", label: "Trading — realized gains", kind: "trading",
       amount: 42350, isRecurring: false, month: "2026-07" },
     { id: "inc-6", memberId: "sara", label: "Freelance design project", kind: "side_hustle",

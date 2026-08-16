@@ -21,6 +21,7 @@ Next.js (App Router) + TypeScript + Tailwind v4 · Supabase (Postgres, RLS, magi
 - Card payments (`kind = payment`) are excluded from spend by default; refunds count as negative spend.
 - Merchant rules match exactly on the normalized string; normalization lives in `lib/import/normalize.ts`.
 - `monthFlow()` splits the month into spent · committed · free, and the three always sum to income. A fixed line counts once — the larger of its ticked amount and its card charge, never both. A month that is over has no committed left; unused cap room becomes free.
+- Income entries carry `amount` (what lands) and optional `grossAmount` (before tax and deductions). Gross falls back to amount, so it is never the smaller number.
 - `flowFrom()` is the one implementation of that arithmetic. The server calls it for the truth; `MonthBoard` calls it again on the client for every optimistic move, so a checkbox moves the tank before the round trip. Never fork the formula.
 
 ## Supabase gotcha

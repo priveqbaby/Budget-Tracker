@@ -114,7 +114,6 @@ export default async function Dashboard({
           </div>
         </div>
         <span className={verdictChip} style={{ fontSize: 13, padding: "5px 14px" }}>
-          <VerdictIcon status={s.verdict.status} />
           {s.verdict.headline}
         </span>
       </header>
@@ -146,9 +145,7 @@ export default async function Dashboard({
         isPlanned={s.income.isPlanned}
         plannedSurplus={s.income.plannedSurplus}
         monthIsOver={s.elapsedFraction >= 1}
-        entries={s.income.entries}
-        savingsTarget={household.savingsTarget}
-        drawn={s.surplus?.drawn ?? 0}
+        grossIncome={s.income.gross}
         uncategorized={s.uncategorized.map(toDto)}
         historySlot={
           <section key="history" className="settle settle-4">
@@ -197,16 +194,6 @@ function MonthArrow({ href, dir }: { href: string | null; dir: "prev" | "next" }
     >
       {glyph}
     </Link>
-  );
-}
-
-/** The verdict's mood, in one character. The words beside it carry the meaning. */
-function VerdictIcon({ status }: { status: "ok" | "watch" | "over" }) {
-  const face = status === "ok" ? "🤑" : status === "watch" ? "👀" : "💸";
-  return (
-    <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>
-      {face}
-    </span>
   );
 }
 
