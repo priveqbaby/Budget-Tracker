@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
-import { addIncomeEntry } from "@/app/actions";
+import { useEffect, useRef, useState } from "react";
 import { formatCents, formatCentsWhole } from "@/lib/money";
 import { parseAmountToCents } from "@/lib/import/parse";
 import type { MonthFlow } from "@/lib/budget";
@@ -32,6 +31,15 @@ interface MemberDto {
   displayName: string;
 }
 
+/** The receipt for a move that just happened, shown flying off the tank. */
+export interface Pulse {
+  id: number;
+  label: string;
+  amount: number;
+  tone: "out" | "in";
+  note: string;
+}
+
 /**
  * The month as one tank of money.
  *
@@ -43,39 +51,40 @@ interface MemberDto {
  */
 export function MonthFlowCard({
   flow,
-  month,
   members,
   byMember,
   entries,
   savingsTarget,
   drawn,
+  pulse,
+  onAddIncome,
 }: {
   flow: MonthFlow;
-  month: string;
   members: MemberDto[];
   byMember: Record<string, number>;
   entries: IncomeEntry[];
   savingsTarget: number;
   /** Overages across variable lines — the part of `free` they have eaten. */
   drawn: number;
+  /** The last money move, so the tank can show where it went. */
+  pulse: Pulse | null;
+  onAddIncome: (input: {
+    memberId: string | null;
+    label: string;
+    kind: IncomeKind;
+    amount: number;
+  }) => void;
 }) {
-  const income = Math.max(1, flow.income);
-  const pct = (n: number) => Math.max(0, Math.min(100, (n / income) * 100));
-
-  // Segments are clamped so an over-committed month never paints past the tank.
-  const spentW = pct(flow.spent);
-  const committedW = Math.min(pct(flow.committed), 100 - spentW);
-  const freeW = Math.max(0, 100 - spentW - committedW);
-  const markW = flow.plannedSurplus > 0 ? pct(income - flow.plannedSurplus) : null;
-
+  const markW = geometry(flow).markW;
   const shownFree = useCountUp(flow.free);
   const shownIncome = useCountUp(flow.income);
+  const shownLeft = useCountUp(flow.left);
   const over = flow.free < 0;
   const past = flow.free - flow.plannedSurplus;
   const oneOffs = entries.filter((e) => !e.isRecurring);
 
   return (
-    <section className="settle settle-1 mt-6">
+    <section className="settle settle-1 relative z-10 mt-6">
       <div className="mb-2.5 flex items-baseline justify-between px-1">
         <h2 className="overline">Money this month</h2>
         <span className="text-[12px] text-ink-muted">
@@ -95,7 +104,7 @@ export function MonthFlowCard({
               <span className="money font-display text-[38px] font-semibold leading-none tracking-tight text-ink">
                 {formatCents(shownIncome)}
               </span>
-              <AddIncome month={month} members={members} />
+              <AddIncome members={members} onAdd={onAddIncome} />
             </div>
             <div className="mt-2 flex flex-wrap gap-x-3.5 gap-y-1 text-[12.5px] text-ink-secondary">
               {members.map((m) =>
@@ -121,10 +130,22 @@ export function MonthFlowCard({
 
           <div className="flex items-start gap-7 text-right">
             <Stat label="Spent" value={formatCentsWhole(flow.spent)} />
-            {/* A finished month has nothing outstanding; "$0 committed" is noise. */}
-            {flow.committed > 0 && (
-              <Stat label="Still committed" value={formatCentsWhole(flow.committed)} />
-            )}
+            {/* The number that drains: every tick and every purchase moves it. */}
+            <div>
+              <div className="overline !text-[10px]">Still in the account</div>
+              <div
+                className={`money mt-1 text-[30px] font-semibold leading-none ${
+                  flow.left < 0 ? "status-over" : "text-ink"
+                }`}
+              >
+                {formatCentsWhole(shownLeft)}
+              </div>
+              {flow.committed > 0 && (
+                <div className="mt-1 text-[11.5px] text-ink-muted">
+                  {formatCentsWhole(flow.committed)} of it promised
+                </div>
+              )}
+            </div>
             <div>
               <div className="overline !text-[10px]">Free</div>
               <div
@@ -153,26 +174,7 @@ export function MonthFlowCard({
           </div>
         </div>
 
-        {/* The tank. Widths are percentages of income, so the three always fill it. */}
-        <div
-          className="flowbar mt-5"
-          role="img"
-          aria-label={`Of ${formatCentsWhole(flow.income)} in, ${formatCentsWhole(
-            flow.spent,
-          )} spent, ${formatCentsWhole(flow.committed)} still committed, ${formatCentsWhole(
-            flow.free,
-          )} free against a ${formatCentsWhole(flow.plannedSurplus)} goal.`}
-        >
-          <span className="flowbar-seg flowbar-spent" style={{ width: `${spentW}%` }} />
-          <span className="flowbar-seg flowbar-committed" style={{ width: `${committedW}%` }} />
-          <span
-            className={`flowbar-seg ${over ? "flowbar-short" : "flowbar-free"}`}
-            style={{ width: `${freeW}%` }}
-          />
-          {markW !== null && (
-            <span className="flowbar-mark" style={{ left: `${markW}%` }} aria-hidden />
-          )}
-        </div>
+        <Tank flow={flow} pulse={pulse} className="mt-9" />
 
         <div className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[12px] text-ink-secondary">
           <Key className="flowbar-spent" label="spent" />
@@ -237,6 +239,136 @@ export function MonthFlowCard({
   );
 }
 
+/** Segment widths as percentages of income — the one place they are computed. */
+function geometry(flow: MonthFlow) {
+  const income = Math.max(1, flow.income);
+  const pct = (n: number) => Math.max(0, Math.min(100, (n / income) * 100));
+  // Clamped so an over-committed month never paints past the tank.
+  const spentW = pct(flow.spent);
+  const committedW = Math.min(pct(flow.committed), 100 - spentW);
+  const freeW = Math.max(0, 100 - spentW - committedW);
+  const markW = flow.plannedSurplus > 0 ? pct(income - flow.plannedSurplus) : null;
+  return { spentW, committedW, freeW, markW };
+}
+
+/**
+ * The bar itself, plus the receipt that flies off the point where money moved.
+ * Shared by the full card and the strip that pins to the top of the viewport,
+ * so the reaction is the same wherever you happen to be looking.
+ */
+export function Tank({
+  flow,
+  pulse,
+  className = "",
+  slim = false,
+}: {
+  flow: MonthFlow;
+  pulse: Pulse | null;
+  className?: string;
+  slim?: boolean;
+}) {
+  const { spentW, committedW, freeW, markW } = geometry(flow);
+  const over = flow.free < 0;
+
+  return (
+    <div className={`relative ${className}`}>
+      <div
+        className={`flowbar${slim ? " flowbar-slim" : ""}`}
+        role="img"
+        aria-label={`Of ${formatCentsWhole(flow.income)} in, ${formatCentsWhole(
+          flow.spent,
+        )} spent, ${formatCentsWhole(flow.committed)} still committed, ${formatCentsWhole(
+          flow.free,
+        )} free against a ${formatCentsWhole(flow.plannedSurplus)} goal.`}
+      >
+        <span className="flowbar-seg flowbar-spent" style={{ width: `${spentW}%` }} />
+        <span className="flowbar-seg flowbar-committed" style={{ width: `${committedW}%` }} />
+        <span
+          className={`flowbar-seg ${over ? "flowbar-short" : "flowbar-free"}`}
+          style={{ width: `${freeW}%` }}
+        />
+        {markW !== null && (
+          <span className="flowbar-mark" style={{ left: `${markW}%` }} aria-hidden />
+        )}
+        {/* A fresh element per move: a CSS animation only restarts on mount, and
+            keying the bar itself would kill the segment width transitions. */}
+        {pulse && (
+          <span key={pulse.id} className={`flowbar-sheen flowbar-sheen-${pulse.tone}`} aria-hidden />
+        )}
+      </div>
+
+      {/* The receipt, launched from the exact point where the money left (or
+          arrived). It is what makes ticking a bill feel like spending. */}
+      {pulse && (
+        <span
+          key={pulse.id}
+          // In the pinned strip the bar is flush with the top of the viewport,
+          // so a receipt that rises would be clipped: it drops instead.
+          className={`flowpill flowpill-${pulse.tone}${slim ? " flowpill-below" : ""}`}
+          style={{ left: `${pulse.tone === "out" ? spentW : 100 - freeW / 2}%` }}
+        >
+          {pulse.tone === "out" ? "−" : "+"}
+          {formatCentsWhole(pulse.amount)}
+          <span className="flowpill-note">
+            {pulse.label}
+            {pulse.note ? ` · ${pulse.note}` : ""}
+          </span>
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The tank, pinned to the top of the viewport once the card has scrolled away.
+ * Without it, ticking a bill at the bottom of the page moves a bar nobody can
+ * see — which is the whole point of ticking it here rather than in a spreadsheet.
+ */
+export function StickyTank({
+  flow,
+  pulse,
+  on,
+}: {
+  flow: MonthFlow;
+  pulse: Pulse | null;
+  on: boolean;
+}) {
+  return (
+    <div className={`tankbar${on ? " is-on" : ""}`} aria-hidden={!on}>
+      <div className="tankbar-inner">
+        <div className="tankbar-stat">
+          <span className="overline !text-[9.5px]">Still in the account</span>
+          <span
+            className={`money text-[19px] font-semibold leading-none ${
+              flow.left < 0 ? "status-over" : "text-ink"
+            }`}
+          >
+            {formatCentsWhole(flow.left)}
+          </span>
+        </div>
+        <Tank flow={flow} pulse={pulse} slim className="flex-1" />
+        <div className="tankbar-stat text-right">
+          <span className="overline !text-[9.5px]">Free</span>
+          <span
+            className={`money text-[19px] font-semibold leading-none ${
+              flow.free < 0 ? "status-over" : flow.goalMet ? "status-ok" : "text-ink"
+            }`}
+          >
+            {formatCentsWhole(flow.free)}
+          </span>
+        </div>
+        <span
+          className={`chip ${flow.goalMet ? "chip-ok" : "chip-watch"} shrink-0`}
+          style={{ fontSize: 11, padding: "3px 9px" }}
+        >
+          <span aria-hidden>{flow.goalMet ? "🎯" : "🐷"}</span>
+          {formatCentsWhole(flow.plannedSurplus)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-[74px]">
@@ -256,14 +388,23 @@ function Key({ className, label }: { className: string; label: string }) {
 }
 
 /** Extra money that landed this month — the one thing that makes the tank wider. */
-function AddIncome({ month, members }: { month: string; members: MemberDto[] }) {
+function AddIncome({
+  members,
+  onAdd,
+}: {
+  members: MemberDto[];
+  onAdd: (input: {
+    memberId: string | null;
+    label: string;
+    kind: IncomeKind;
+    amount: number;
+  }) => void;
+}) {
   const [open, setOpen] = useState(false);
   const [label, setLabel] = useState("");
   const [amount, setAmount] = useState("");
   const [kind, setKind] = useState<IncomeKind>("side_hustle");
   const [memberId, setMemberId] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
   const first = useRef<HTMLInputElement>(null);
 
@@ -286,25 +427,11 @@ function AddIncome({ month, members }: { month: string; members: MemberDto[] }) 
   const valid = Boolean(label.trim()) && !Number.isNaN(cents) && cents > 0;
 
   const submit = () => {
-    if (!valid || pending) return;
-    setError(null);
-    startTransition(async () => {
-      try {
-        await addIncomeEntry({
-          memberId: memberId || null,
-          label: label.trim(),
-          kind,
-          amount: cents,
-          isRecurring: false,
-          month,
-        });
-        setLabel("");
-        setAmount("");
-        setOpen(false);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Could not add that");
-      }
-    });
+    if (!valid) return;
+    onAdd({ memberId: memberId || null, label: label.trim(), kind, amount: cents });
+    setLabel("");
+    setAmount("");
+    setOpen(false);
   };
 
   return (
@@ -369,16 +496,15 @@ function AddIncome({ month, members }: { month: string; members: MemberDto[] }) 
               <option key={m.id} value={m.id}>{m.displayName}</option>
             ))}
           </select>
-          {error && <p className="mt-2 text-[11.5px] status-over">{error}</p>}
           <div className="mt-2 flex items-center justify-between">
             <span className="text-[11px] text-ink-muted">counts in this month only</span>
             <button
               type="button"
               onClick={submit}
-              disabled={!valid || pending}
+              disabled={!valid}
               className="btn btn-primary !px-3 !py-1 !text-[12.5px]"
             >
-              {pending ? "Adding…" : "Add"}
+              Add
             </button>
           </div>
         </div>

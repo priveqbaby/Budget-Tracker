@@ -67,6 +67,7 @@ export function CategoryRows({
   sources,
   defaultDate,
   elapsedFraction,
+  onSpend,
 }: {
   rows: CategoryRowDto[];
   members: MemberDto[];
@@ -74,6 +75,13 @@ export function CategoryRows({
   sources: SourceOption[];
   defaultDate: string;
   elapsedFraction: number;
+  onSpend: (input: {
+    sourceId: string;
+    date: string;
+    description: string;
+    amountCents: number;
+    categoryId: string;
+  }) => void;
 }) {
   const [open, setOpen] = useState<string | null>(null);
 
@@ -139,6 +147,7 @@ export function CategoryRows({
                   categoryName={row.name}
                   sources={sources}
                   defaultDate={defaultDate}
+                  onAdd={onSpend}
                 />
               </div>
             </div>

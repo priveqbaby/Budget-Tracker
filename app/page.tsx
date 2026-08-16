@@ -2,13 +2,11 @@ import Link from "next/link";
 import { getStore, isDemoMode } from "@/lib/data";
 import { DEMO_TODAY } from "@/lib/data/demo-seed";
 import { monthFlow, summarizeMonth } from "@/lib/budget";
-import { formatCents, formatCentsWhole, monthLabel } from "@/lib/money";
-import { CategoryRows, type CategoryRowDto, type TxnDto } from "@/components/category-rows";
-import { FixedChecklist } from "@/components/fixed-checklist";
+import { formatCentsWhole, monthLabel } from "@/lib/money";
+import { type CategoryRowDto, type TxnDto } from "@/components/category-rows";
 import { HistoryChart, type HistoryPointDto } from "@/components/history-chart";
-import { MonthFlowCard } from "@/components/month-flow";
+import { MonthBoard } from "@/components/month-board";
 import { MonthJournal } from "@/components/month-journal";
-import { UncategorizedRow } from "@/components/uncategorized-row";
 
 export default async function Dashboard({
   searchParams,
@@ -96,11 +94,6 @@ export default async function Dashboard({
       ? todayIso
       : `${month}-${String(lastDayOfMonth).padStart(2, "0")}`;
 
-  const fixedPaid = s.fixed.filter((f) => f.isPaid).length;
-  const remaining = s.totalVariableCap - s.totalVariableSpent;
-  const isCurrent = s.elapsedFraction > 0 && s.elapsedFraction < 1;
-  const paceDelta = s.totalVariableSpent - Math.round(s.totalVariableCap * s.elapsedFraction);
-
   const verdictChip =
     s.verdict.status === "ok" ? "chip chip-ok" : s.verdict.status === "watch" ? "chip chip-watch" : "chip chip-over";
 
@@ -126,117 +119,47 @@ export default async function Dashboard({
         </span>
       </header>
 
-      {/* The month as one tank: what came in, what has gone, what is free. */}
-      <MonthFlowCard
-        flow={flow}
+      {/* One client board owns every money move, so ticking a bill or filing a
+          purchase moves the tank in the same beat instead of a round trip later. */}
+      <MonthBoard
+        base={{
+          income: flow.income,
+          byMember: s.income.byMember,
+          rows,
+          fixed: s.fixed.map((f) => ({
+            categoryId: f.category.id,
+            name: f.category.name,
+            amount: f.amount,
+            isPaid: f.isPaid,
+            spent: f.spent,
+          })),
+          uncategorizedSpent: s.uncategorized.reduce((sum, t) => sum + t.amount, 0),
+        }}
         month={month}
         members={household.members.map((m) => ({ id: m.id, displayName: m.displayName }))}
-        byMember={s.income.byMember}
+        categories={categoryOptions}
+        sources={sourceOptions}
+        quickAddDate={quickAddDate}
+        elapsedFraction={s.elapsedFraction}
+        daysElapsed={s.daysElapsed}
+        daysInMonth={s.daysInMonth}
+        isPlanned={s.income.isPlanned}
+        plannedSurplus={s.income.plannedSurplus}
+        monthIsOver={s.elapsedFraction >= 1}
         entries={s.income.entries}
         savingsTarget={household.savingsTarget}
         drawn={s.surplus?.drawn ?? 0}
+        uncategorized={s.uncategorized.map(toDto)}
+        historySlot={
+          <section key="history" className="settle settle-4">
+            <h2 className="overline mb-2.5 px-1">Month over month</h2>
+            <div className="card px-5 pb-3 pt-5">
+              <HistoryChart points={history} selected={month} />
+              <FoodDrift foodByMonth={foodByMonth} months={months} />
+            </div>
+          </section>
+        }
       />
-
-      {/* Hero */}
-      <section className="card settle settle-2 mt-8 px-7 py-6">
-        <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
-          <div className="min-w-[240px]">
-            <div className="overline">Variable spend</div>
-            <div className="font-display mt-1 text-[52px] font-semibold leading-none tracking-tight text-ink">
-              {formatCents(s.totalVariableSpent)}
-            </div>
-            <div className="mt-2 text-[13.5px] text-ink-secondary">
-              of {formatCentsWhole(s.totalVariableCap)} budgeted
-              {isCurrent && (
-                <>
-                  {" "}· day {s.daysElapsed} of {s.daysInMonth} ·{" "}
-                  <span className={paceDelta > 0 ? "font-semibold status-watch" : "font-semibold status-ok"}>
-                    {paceDelta > 0
-                      ? `${formatCentsWhole(paceDelta)} ahead of pace`
-                      : `${formatCentsWhole(-paceDelta)} under pace`}
-                  </span>
-                </>
-              )}
-            </div>
-            <div
-              className="meter mt-4 max-w-[420px]"
-              style={{ background: "var(--color-sunken)", border: "1px solid var(--color-hairline)" }}
-            >
-              <span
-                className="meter-fill"
-                style={{
-                  width: `${Math.min(100, (s.totalVariableSpent / Math.max(1, s.totalVariableCap)) * 100)}%`,
-                  background: "var(--color-accent)",
-                }}
-              />
-              {isCurrent && (
-                <span className="meter-tick" style={{ left: `calc(${s.elapsedFraction * 100}% - 1px)` }} />
-              )}
-            </div>
-          </div>
-
-          <dl className="grid grid-cols-3 gap-x-9 gap-y-1 text-right">
-            <Stat label="Left to spend" value={formatCentsWhole(remaining)} tone={remaining < 0 ? "over" : undefined} />
-            <Stat label="Fixed items" value={`${fixedPaid} of ${s.fixed.length} paid`} tone={fixedPaid === s.fixed.length ? "ok" : undefined} />
-            <Stat label="To review" value={String(s.unconfirmedCount + s.uncategorized.length)} tone={s.unconfirmedCount + s.uncategorized.length > 0 ? "watch" : "ok"} />
-          </dl>
-        </div>
-      </section>
-
-      {/* Variable categories */}
-      <section className="settle settle-2 mt-8">
-        <div className="mb-2.5 flex items-baseline justify-between px-1">
-          <h2 className="overline">Spending against caps</h2>
-          <span className="text-[12px] text-ink-muted">
-            {isCurrent ? "tick marks where the month stands" : "full month"}
-          </span>
-        </div>
-        {/* No overflow-hidden: the per-transaction action menu overflows the card. */}
-        <div className="card">
-          <CategoryRows
-            rows={rows}
-            members={household.members}
-            categories={categoryOptions}
-            sources={sourceOptions}
-            defaultDate={quickAddDate}
-            elapsedFraction={isCurrent ? s.elapsedFraction : 1}
-          />
-          <UncategorizedRow
-            transactions={s.uncategorized.map(toDto)}
-            categories={categoryOptions}
-          />
-        </div>
-      </section>
-
-      {/* Fixed + history side by side */}
-      <div className="mt-8 grid gap-8 lg:grid-cols-[380px_minmax(0,1fr)]">
-        <section className="settle settle-3">
-          <h2 className="overline mb-2.5 px-1">Fixed items</h2>
-          {/* No overflow-hidden: the quick-add panel overflows the card. */}
-          <div className="card">
-            <FixedChecklist
-              month={month}
-              sources={sourceOptions}
-              defaultDate={quickAddDate}
-              items={s.fixed.map((f) => ({
-                categoryId: f.category.id,
-                name: f.category.name,
-                amount: f.amount,
-                isPaid: f.isPaid,
-                spent: f.spent,
-              }))}
-            />
-          </div>
-        </section>
-
-        <section className="settle settle-4">
-          <h2 className="overline mb-2.5 px-1">Month over month</h2>
-          <div className="card px-5 pb-3 pt-5">
-            <HistoryChart points={history} selected={month} />
-            <FoodDrift foodByMonth={foodByMonth} months={months} />
-          </div>
-        </section>
-      </div>
 
       <MonthJournal
         month={month}
@@ -247,17 +170,6 @@ export default async function Dashboard({
       <footer className="mt-10 pb-4 text-center text-[12px] text-ink-muted">
         Refunds count against their category · card payments are excluded from spend
       </footer>
-    </div>
-  );
-}
-
-function Stat({ label, value, tone }: { label: string; value: string; tone?: "ok" | "watch" | "over" }) {
-  return (
-    <div className="min-w-[86px]">
-      <dt className="overline !text-[10px]">{label}</dt>
-      <dd className={`mt-1 text-[17px] font-semibold ${tone ? `status-${tone}` : "text-ink"}`}>
-        {value}
-      </dd>
     </div>
   );
 }

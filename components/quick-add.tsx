@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
-import { addManualTransaction } from "@/app/actions";
+import { useEffect, useRef, useState } from "react";
 import { parseAmountToCents } from "@/lib/import/parse";
 
 export interface SourceOption {
@@ -22,19 +21,27 @@ export function QuickAdd({
   sources,
   defaultDate,
   align = "right",
+  onAdd,
 }: {
   categoryId: string;
   categoryName: string;
   sources: SourceOption[];
   defaultDate: string;
   align?: "left" | "right";
+  /** The board runs the write, so the tank and this row move in one beat. */
+  onAdd: (input: {
+    sourceId: string;
+    date: string;
+    description: string;
+    amountCents: number;
+    categoryId: string;
+  }) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [date, setDate] = useState(defaultDate);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [sourceId, setSourceId] = useState(sources[0]?.id ?? "");
-  const [pending, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
   const firstField = useRef<HTMLInputElement>(null);
 
@@ -62,19 +69,17 @@ export function QuickAdd({
     cents !== 0;
 
   const submit = () => {
-    if (!valid || pending) return;
-    startTransition(async () => {
-      await addManualTransaction({
-        sourceId,
-        date,
-        description: description.trim(),
-        amountCents: cents,
-        categoryId,
-      });
-      setDescription("");
-      setAmount("");
-      setOpen(false);
+    if (!valid) return;
+    onAdd({
+      sourceId,
+      date,
+      description: description.trim(),
+      amountCents: cents,
+      categoryId,
     });
+    setDescription("");
+    setAmount("");
+    setOpen(false);
   };
 
   return (
@@ -164,10 +169,10 @@ export function QuickAdd({
             <button
               type="button"
               onClick={submit}
-              disabled={!valid || pending}
+              disabled={!valid}
               className="btn btn-primary !px-3 !py-1 !text-[12.5px]"
             >
-              {pending ? "Adding…" : "Add"}
+              Add
             </button>
           </div>
         </div>

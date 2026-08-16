@@ -40,7 +40,9 @@ two-slot categorical pair (CVD ΔE 10.3 deutan, normal ΔE 15.5).
 |---|---|
 | Page load | Sections settle up in sequence |
 | Hero figure | Counts up to the real number |
-| Money-this-month tank | Segments ease to their new widths; income and free count up |
+| Money-this-month tank | Segments ease to their new widths; the money figures count |
+| Any money move | A receipt flies off the exact point on the tank where the money left, and light sweeps the bar in the direction it travelled |
+| Scrolling past the tank | A slim copy pins to the top, so a tick at the bottom of the page still moves a bar you can see |
 | Cards | Light sweeps across the glass on hover |
 | Nav | Pills glide right; the active one is a lit gradient |
 | Category rows | Slide right and lift off the ground |
@@ -55,7 +57,7 @@ two-slot categorical pair (CVD ΔE 10.3 deutan, normal ΔE 15.5).
 Every one is decoration. None of it carries meaning, and all of it is disabled
 under `prefers-reduced-motion: reduce`.
 
-## Three rules the decoration must not break
+## Four rules the decoration must not break
 
 1. **Status colour is data.** The travelling highlight on a meter is capped at
    22% white across a narrow band — an early version at 50% bleached the fills
@@ -66,10 +68,15 @@ under `prefers-reduced-motion: reduce`.
    highlight pseudo-element) drops it back into flow and silently collapses
    every meter in the app to zero height. An absolutely-positioned element
    already anchors its own `::after`.
-3. **Popovers are opaque.** The card surface is `rgba(255,255,255,.90)`; a menu
+3. **Feedback has to be visible from where the action is.** The tank sits at
+   the top and the fixed checklist a thousand pixels below it; a bar that only
+   moves off-screen may as well not move. Hence the pinned strip — and hence
+   the receipt drops *below* the bar there, because above it is off-screen.
+4. **Popovers are opaque.** The card surface is `rgba(255,255,255,.90)`; a menu
    or quick-add panel painted with it lets the rows underneath show through and
    becomes unreadable. Both use flat `#fff`. Their containing card also has to
-   drop `overflow-hidden`, or the panel is clipped.
+   drop `overflow-hidden`, or the panel is clipped — and the section needs
+   `relative z-10`, or the next section paints straight over the panel.
 
 ## Still open
 

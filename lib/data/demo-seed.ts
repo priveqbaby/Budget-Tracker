@@ -76,7 +76,7 @@ export const categories: Category[] = [
   // Variable — the lines that actually move, tracked against their caps.
   { id: "food", name: "Food", monthlyCap: 120000, isFixed: false, isSurplus: false, sortOrder: 8 },
   { id: "gym", name: "Gym & tennis", monthlyCap: 50000, isFixed: false, isSurplus: false, sortOrder: 9 },
-  { id: "fun", name: "Fun activities", monthlyCap: 30000, isFixed: false, isSurplus: false, sortOrder: 10 },
+  { id: "fun", name: "Fun activities", monthlyCap: 36900, isFixed: false, isSurplus: false, sortOrder: 10 },
   { id: "clothing", name: "Clothing", monthlyCap: 25000, isFixed: false, isSurplus: false, sortOrder: 11 },
   { id: "transit", name: "Transit", monthlyCap: 20000, isFixed: false, isSurplus: false, sortOrder: 12 },
   { id: "personal", name: "Haircut & personal", monthlyCap: 20000, isFixed: false, isSurplus: false, sortOrder: 13 },
@@ -85,7 +85,9 @@ export const categories: Category[] = [
   { id: "subs", name: "Subscriptions", monthlyCap: 6800, isFixed: false, isSurplus: false, sortOrder: 15 },
   { id: "streaming", name: "Streaming", monthlyCap: 5000, isFixed: false, isSurplus: false, sortOrder: 16 },
 
-  { id: "surplus", name: "Unallocated surplus", monthlyCap: 56900, isFixed: false, isSurplus: true, sortOrder: 17 },
+  // A round $500 goal. The $69 it used to carry moved onto Fun activities, so
+  // allocated ($6,176) + surplus ($500) still equals the $6,676 baseline.
+  { id: "surplus", name: "Unallocated surplus", monthlyCap: 50000, isFixed: false, isSurplus: true, sortOrder: 17 },
 ];
 
 type SourceId = "src-amex" | "src-ws-leon" | "src-ws-sara";

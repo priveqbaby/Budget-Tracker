@@ -311,6 +311,128 @@ body {
     #e2e9f2 5px 10px
   );
 }
+/* The tank, pinned once the card scrolls away. Ticking a bill at the bottom of
+   the page has to move a bar you can actually see. */
+.tankbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-100%);
+  transition: opacity .22s var(--lift), transform .28s var(--lift);
+  background: rgba(255,255,255,.97);
+  border-bottom: 1px solid var(--color-hairline);
+  box-shadow: 0 6px 20px -12px rgba(22,38,47,.35);
+}
+.tankbar.is-on {
+  opacity: 1;
+  transform: translateY(0);
+}
+.tankbar-inner {
+  margin: 0 auto;
+  max-width: 1200px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 11px 20px;
+}
+@media (min-width: 768px) {
+  /* Clear the sidebar so the strip lines up with the reading column. */
+  .tankbar-inner { padding-left: 260px; padding-right: 40px; }
+}
+.tankbar-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.flowbar-slim { height: 14px; }
+@media (max-width: 520px) {
+  /* No room for both numbers and a bar; the number that drains wins. */
+  .tankbar-inner .flowbar-slim { display: none; }
+}
+
+/* A move just landed: light sweeps across the tank once, in the direction the
+   money travelled — leftward out of the bar, rightward back into it. */
+.flowbar-sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,.55) 45%,
+    rgba(255,255,255,.55) 55%,
+    transparent 100%
+  );
+}
+.flowbar-sheen-out { animation: sheen-out 900ms var(--lift) both; }
+.flowbar-sheen-in  { animation: sheen-in  900ms var(--lift) both; }
+@keyframes sheen-out {
+  from { transform: translateX(60%); opacity: 0; }
+  35%  { opacity: 1; }
+  to   { transform: translateX(-100%); opacity: 0; }
+}
+@keyframes sheen-in {
+  from { transform: translateX(-100%); opacity: 0; }
+  35%  { opacity: 1; }
+  to   { transform: translateX(100%); opacity: 0; }
+}
+
+/* The receipt: it launches from the exact point on the bar where the money
+   left (or arrived) and drifts away. This is what makes ticking a bill feel
+   like spending rather than like filing paperwork. */
+.flowpill {
+  position: absolute;
+  top: -34px;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+  box-shadow: 0 6px 18px -8px rgba(22,38,47,.4);
+  animation: pill-out 1500ms var(--lift) both;
+  z-index: 5;
+}
+.flowpill-note {
+  font-size: 11.5px;
+  font-weight: 600;
+  opacity: .72;
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.flowpill-out {
+  background: var(--color-accent);
+  color: #fff;
+}
+.flowpill-in {
+  background: var(--color-ok);
+  color: #fff;
+  animation-name: pill-in;
+}
+@keyframes pill-out {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(14px) scale(.9); }
+  14%  { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  70%  { opacity: 1; transform: translateX(-50%) translateY(-6px) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-26px) scale(.96); }
+}
+@keyframes pill-in {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-22px) scale(.9); }
+  14%  { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  70%  { opacity: 1; transform: translateX(-50%) translateY(-4px) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-26px) scale(.96); }
+}
+
 /* Where free would sit if it exactly matched the plan's surplus. */
 .flowbar-mark {
   position: absolute;
@@ -324,6 +446,14 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .flowbar-seg { transition: none; }
+  .flowbar-sheen { display: none; }
+  /* The receipt still appears and still says the amount — it just holds still
+     and fades, because the number is the point, not the flight. */
+  .flowpill { animation: pill-hold 1500ms linear both; }
+  @keyframes pill-hold {
+    0%, 80% { opacity: 1; transform: translateX(-50%); }
+    100%    { opacity: 0; transform: translateX(-50%); }
+  }
 }
 
 /* The field behind the glass is one solid colour — no gradients, no blur —
@@ -437,4 +567,18 @@ body {
   0%,100% { transform: translate3d(0,0,0) rotate(4deg); }
   25%     { transform: translate3d(-3vw,-3.4vh,0) rotate(-9deg); }
   60%     { transform: translate3d(3.6vw,3.8vh,0) rotate(11deg); }
+}
+
+/* In the pinned strip the bar sits at the very top of the viewport, so the
+   receipt has to fall away from it rather than rise into the browser chrome. */
+.flowpill-below {
+  top: auto;
+  bottom: -34px;
+  animation-name: pill-below;
+}
+@keyframes pill-below {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(-14px) scale(.9); }
+  14%  { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+  70%  { opacity: 1; transform: translateX(-50%) translateY(6px) scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(26px) scale(.96); }
 }

@@ -99,51 +99,77 @@ export interface MonthFlow {
  * lands on it, whichever is larger — never both, or every bill on a card would
  * be counted twice.
  */
-function fixedOutflow(f: MonthSummary["fixed"][number]): number {
+function fixedOutflow(f: { amount: number; isPaid: boolean; spent: number }): number {
   return Math.max(f.isPaid ? f.amount : 0, f.spent, 0);
 }
 
-export function monthFlow(s: MonthSummary): MonthFlow {
-  // With nothing recorded, a $0 tank would be useless and would read as a
-  // catastrophe; fall back to the income the plan implies and say so.
-  const income = s.income.isPlanned
-    ? s.income.allocated + s.income.plannedSurplus
-    : s.income.total;
+/** The parts of a month the tank is computed from — nothing else is needed. */
+export interface FlowParts {
+  income: number;
+  isPlanned: boolean;
+  plannedSurplus: number;
+  /** A finished month has nothing left to promise. */
+  monthIsOver: boolean;
+  variable: Array<{ cap: number; spent: number }>;
+  /** Spend filed against no category: no cap to come out of, so it draws from free. */
+  uncategorizedSpent: number;
+  fixed: Array<{ amount: number; isPaid: boolean; spent: number }>;
+}
 
-  const fixedSpent = s.fixed.reduce((sum, f) => sum + fixedOutflow(f), 0);
-  const fixedCommitted = s.fixed.reduce(
+/**
+ * The one place the tank's arithmetic lives. The dashboard calls this on the
+ * server for the truth and again on the client for every optimistic tick, so a
+ * checkbox moves the bar before the round trip — same function, no drift.
+ */
+export function flowFrom(p: FlowParts): MonthFlow {
+  const fixedSpent = p.fixed.reduce((sum, f) => sum + fixedOutflow(f), 0);
+  const fixedCommitted = p.fixed.reduce(
     (sum, f) => sum + Math.max(0, f.amount - fixedOutflow(f)),
     0,
   );
-  // Unfiled spend has no cap to come out of, so it draws straight from `free`
-  // until it is filed onto a line that still has room.
-  const variableSpent = s.totalVariableSpent;
-  const variableCommitted = s.variable.reduce(
+  const variableSpent =
+    p.variable.reduce((sum, v) => sum + v.spent, 0) + p.uncategorizedSpent;
+  const variableCommitted = p.variable.reduce(
     (sum, v) => sum + Math.max(0, v.cap - v.spent),
     0,
   );
 
   const spent = variableSpent + fixedSpent;
-  // A month that is over has nothing left to promise: room the caps never used
-  // was money kept, so in hindsight it is free, not committed. Without this a
-  // finished month would still claim half its income was spoken for.
-  const monthIsOver = s.elapsedFraction >= 1;
-  const committed = monthIsOver ? 0 : fixedCommitted + variableCommitted;
-  const left = income - spent;
+  // Room the caps never used was money kept, so once the month is over it is
+  // free, not committed. Without this, browsing July would still claim a third
+  // of its income was spoken for.
+  const committed = p.monthIsOver ? 0 : fixedCommitted + variableCommitted;
+  const left = p.income - spent;
   const free = left - committed;
 
   return {
-    income,
-    isPlanned: s.income.isPlanned,
+    income: p.income,
+    isPlanned: p.isPlanned,
     spent,
     variableSpent,
     fixedSpent,
     committed,
     left,
     free,
-    plannedSurplus: s.income.plannedSurplus,
-    goalMet: free >= s.income.plannedSurplus,
+    plannedSurplus: p.plannedSurplus,
+    goalMet: free >= p.plannedSurplus,
   };
+}
+
+export function monthFlow(s: MonthSummary): MonthFlow {
+  return flowFrom({
+    // With nothing recorded, a $0 tank would be useless and would read as a
+    // catastrophe; fall back to the income the plan implies and say so.
+    income: s.income.isPlanned
+      ? s.income.allocated + s.income.plannedSurplus
+      : s.income.total,
+    isPlanned: s.income.isPlanned,
+    plannedSurplus: s.income.plannedSurplus,
+    monthIsOver: s.elapsedFraction >= 1,
+    variable: s.variable.map((v) => ({ cap: v.cap, spent: v.spent })),
+    uncategorizedSpent: s.uncategorized.reduce((sum, t) => sum + t.amount, 0),
+    fixed: s.fixed.map((f) => ({ amount: f.amount, isPaid: f.isPaid, spent: f.spent })),
+  });
 }
 
 function daysInMonth(month: string): number {
