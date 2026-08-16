@@ -3,7 +3,7 @@
 import { useEffect, useOptimistic, useRef, useState, useTransition, type ReactNode } from "react";
 import { addManualTransaction, addIncomeEntry, toggleFixedPaid } from "@/app/actions";
 import { flowFrom } from "@/lib/budget";
-import { formatCents, formatCentsWhole } from "@/lib/money";
+
 import { CategoryRows, type CategoryRowDto, type MemberDto, type TxnDto } from "./category-rows";
 import { FixedChecklist, type FixedItemDto } from "./fixed-checklist";
 import { MonthFlowCard, StickyTank, type Pulse } from "./month-flow";
@@ -197,8 +197,12 @@ export function MonthBoard({
   const remaining = totalVariableCap - totalVariableSpent;
   const isCurrent = elapsedFraction > 0 && elapsedFraction < 1;
   const paceDelta = totalVariableSpent - Math.round(totalVariableCap * elapsedFraction);
+  // Fixed lines carry statement rows too, so their unreviewed ones count as
+  // much as a variable line's.
   const toReview =
-    board.rows.reduce((s, r) => s + r.unconfirmedCount, 0) + uncategorized.length;
+    board.rows.reduce((s, r) => s + r.unconfirmedCount, 0) +
+    board.fixed.reduce((s, f) => s + f.unconfirmedCount, 0) +
+    uncategorized.length;
 
   return (
     <>
@@ -209,62 +213,20 @@ export function MonthBoard({
         members={members}
         chain={chain}
         byMember={board.byMember}
+        stats={{
+          variableCap: totalVariableCap,
+          leftToSpend: remaining,
+          fixedPlanned: board.fixed.reduce((sum, f) => sum + f.amount, 0),
+          fixedPaid,
+          fixedCount: board.fixed.length,
+          toReview,
+          paceDelta,
+          isCurrent,
+        }}
         pulse={pulse}
         onAddIncome={onAddIncome}
       />
       <div ref={sentinel} aria-hidden />
-
-      {/* Hero */}
-      <section className="card settle settle-2 mt-8 px-7 py-6">
-        <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-5">
-          <div className="min-w-[240px]">
-            <div className="overline flex items-center gap-1.5">
-              <span aria-hidden>💵</span>Variable spend
-            </div>
-            <div className="font-display mt-1 text-[52px] font-semibold leading-none tracking-tight text-ink">
-              {formatCents(totalVariableSpent)}
-            </div>
-            <div className="mt-2 text-[13.5px] text-ink-secondary">
-              of {formatCentsWhole(totalVariableCap)} budgeted
-              {isCurrent && (
-                <>
-                  {" "}· day {daysElapsed} of {daysInMonth} ·{" "}
-                  <span className={paceDelta > 0 ? "font-semibold status-watch" : "font-semibold status-ok"}>
-                    {paceDelta > 0
-                      ? `${formatCentsWhole(paceDelta)} ahead of pace`
-                      : `${formatCentsWhole(-paceDelta)} under pace`}
-                  </span>
-                </>
-              )}
-            </div>
-            <div
-              className="meter mt-4 max-w-[420px]"
-              style={{ background: "var(--color-sunken)", border: "1px solid var(--color-hairline)" }}
-            >
-              <span
-                className="meter-fill"
-                style={{
-                  width: `${Math.min(100, (totalVariableSpent / Math.max(1, totalVariableCap)) * 100)}%`,
-                  background: "var(--color-accent)",
-                }}
-              />
-              {isCurrent && (
-                <span className="meter-tick" style={{ left: `calc(${elapsedFraction * 100}% - 1px)` }} />
-              )}
-            </div>
-          </div>
-
-          <dl className="grid grid-cols-3 gap-x-9 gap-y-1 text-right">
-            <Stat label="Left to spend" value={formatCentsWhole(remaining)} tone={remaining < 0 ? "over" : undefined} />
-            <Stat
-              label="Fixed items"
-              value={`${fixedPaid} of ${board.fixed.length} paid`}
-              tone={fixedPaid === board.fixed.length ? "ok" : undefined}
-            />
-            <Stat label="To review" value={String(toReview)} tone={toReview > 0 ? "watch" : "ok"} />
-          </dl>
-        </div>
-      </section>
 
       {/* Variable categories. relative z-10: the quick-add panels are absolute
           inside the card, and without this the next section paints over them. */}

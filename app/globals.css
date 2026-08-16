@@ -299,6 +299,12 @@ body {
   height: 100%;
   transition: width 520ms var(--lift);
 }
+/* A 2px gap in the surface colour separates touching segments (dataviz: the two
+   spacers). Drawn as a shadow rather than a border so the percentage widths stay
+   exactly what the arithmetic says. */
+.flowbar-seg + .flowbar-seg {
+  box-shadow: -2px 0 0 0 #fdfdfe;
+}
 /* Three shares of the joint account, validated as a categorical set on white:
    worst pair CVD ΔE 14.3 (deutan), normal ΔE 15.2. */
 .flowbar-variable { background: var(--color-accent); }   /* wisteria */

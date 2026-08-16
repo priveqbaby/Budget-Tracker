@@ -41,10 +41,8 @@ account cut into what each kind of spending took and what is left. Anything the
 bar cannot show without a fourth colour belongs in a caption instead: the bills
 still to pay ride under the surplus figure rather than claiming a segment.
 
-**One emoji, on purpose.** A money sign marks variable spend — the line the
-household actually steers — in both the tank's legend and the hero heading, so
-the two read as the same thing. Everything else stays in the background field:
-a face in a row that carries a number reads as decoration applied to data.
+**No emoji inside the panels.** They live in the background field only. A face
+in a row that carries a number reads as decoration applied to data.
 
 ## Whimsy, itemised
 
@@ -68,6 +66,23 @@ a face in a row that carries a number reads as decoration applied to data.
 
 Every one is decoration. None of it carries meaning, and all of it is disabled
 under `prefers-reduced-motion: reduce`.
+
+## The month card, and where its rules come from
+
+One card carries the month: the income chain, the per-person split, the bar, the
+three shares, and the smaller readings under a rule. Every row sits on the same
+three- or four-column grid, so labels and figures line up down the card rather
+than being spaced by eye. Three conventions come from the `dataviz` skill and
+are worth keeping:
+
+- **A 2px gap in the surface colour between touching segments** of the bar, drawn
+  as a shadow rather than a border so the percentage widths stay exactly what the
+  arithmetic says.
+- **One contract per tile** — swatch and label, figure, one note — repeated
+  unchanged across the three shares, which is what makes the row read as a row.
+- **Proportional figures on standalone values.** `tabular-nums` is for columns
+  that must align vertically; at 26px it makes a number like `$1,625` look loose.
+  The `.money` class stays on small inline figures and table cells only.
 
 ## Four rules the decoration must not break
 

@@ -44,6 +44,7 @@ export function MonthFlowCard({
   members,
   chain,
   byMember,
+  stats,
   pulse,
   onAddIncome,
 }: {
@@ -52,6 +53,17 @@ export function MonthFlowCard({
   /** The four structural links above the joint account: where the money came from. */
   chain: { gross: number; takeHome: number; intoSavings: number };
   byMember: Record<string, number>;
+  /** The readings the merged card carries below the bar. */
+  stats: {
+    variableCap: number;
+    leftToSpend: number;
+    fixedPlanned: number;
+    fixedPaid: number;
+    fixedCount: number;
+    toReview: number;
+    paceDelta: number;
+    isCurrent: boolean;
+  };
   /** The last money move, so the tank can show where it went. */
   pulse: Pulse | null;
   onAddIncome: (input: {
@@ -80,24 +92,18 @@ export function MonthFlowCard({
       </div>
 
       <div className="card px-6 py-5">
-        {/* The chain, in the order the money actually travels. Only the last
-            link moves during the month; the four before it are structure. */}
-        <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
-          <Link label="Combined income" value={formatCentsWhole(chain.gross)} />
-          <Arrow />
-          <Link label="Take-home" value={formatCentsWhole(chain.takeHome)} />
-          <Arrow />
-          <Link label="Into savings" value={formatCentsWhole(chain.intoSavings)} />
-          <Arrow />
-          <Link
-            label="Joint account"
-            value={formatCentsWhole(shownIncome)}
-            strong
-            after={<AddIncome members={members} onAdd={onAddIncome} />}
-          />
+        {/* Where the money comes from, in the order it travels. Four links on
+            one grid so the labels and figures line up down the card. */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-4 sm:grid-cols-4">
+          <ChainLink label="Combined income" value={chain.gross} />
+          <ChainLink label="Take-home" value={chain.takeHome} />
+          <ChainLink label="Into savings" value={chain.intoSavings} />
+          <ChainLink label="Joint account" value={shownIncome} strong>
+            <AddIncome members={members} onAdd={onAddIncome} />
+          </ChainLink>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-x-3.5 gap-y-1 text-[12px] text-ink-muted">
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-ink-muted">
           {members.map((m) =>
             byMember[m.id] ? (
               <span key={m.id}>
@@ -112,28 +118,159 @@ export function MonthFlowCard({
           ) : null}
         </div>
 
-        <Tank flow={flow} pulse={pulse} className="mt-8" />
+        <Tank flow={flow} pulse={pulse} className="mt-7" />
 
-        {/* The legend is the figures: three shares of the joint account, spread
-            across the bar they belong to. */}
-        <div className="mt-4 grid grid-cols-3 gap-4">
-          <Share swatch="flowbar-variable" label="Variable spend" value={flow.variableSpent} emoji="💵" />
-          <Share swatch="flowbar-fixed" label="Fixed spend" value={flow.fixedSpent} align="center" />
+        {/* The legend is the figures. Same contract in each column — swatch and
+            label, value, one note — so the three read as one row. */}
+        <div className="mt-4 grid grid-cols-3 gap-x-4">
+          <Share
+            swatch="flowbar-variable"
+            label="Variable spend"
+            value={flow.variableSpent}
+            note={
+              <>
+                of {formatCentsWhole(stats.variableCap)} budgeted
+                {stats.isCurrent && (
+                  <>
+                    {" · "}
+                    <span className={stats.paceDelta > 0 ? "status-watch" : "status-ok"}>
+                      {stats.paceDelta > 0
+                        ? `${formatCentsWhole(stats.paceDelta)} ahead of pace`
+                        : `${formatCentsWhole(-stats.paceDelta)} under pace`}
+                    </span>
+                  </>
+                )}
+              </>
+            }
+          />
+          <Share
+            swatch="flowbar-fixed"
+            label="Fixed spend"
+            value={flow.fixedSpent}
+            align="center"
+            note={<>of {formatCentsWhole(stats.fixedPlanned)} planned</>}
+          />
           <Share
             swatch={over ? "flowbar-short" : "flowbar-surplus"}
             label="Surplus"
-            value={flow.left}
+            value={shownLeft}
             align="right"
-            tone={over ? "over" : undefined}
+            over={over}
             note={
-              flow.committed > 0
-                ? `${formatCentsWhole(flow.committed)} of bills still to pay`
-                : undefined
+              flow.committed > 0 ? (
+                <>{formatCentsWhole(flow.committed)} of bills still to pay</>
+              ) : null
             }
+          />
+        </div>
+
+        <div className="mt-5 grid grid-cols-3 gap-x-4 border-t border-hairline pt-4">
+          <Mini label="Left to spend" value={formatCentsWhole(stats.leftToSpend)} tone={stats.leftToSpend < 0 ? "over" : undefined} />
+          <Mini
+            label="Fixed items"
+            value={`${stats.fixedPaid} of ${stats.fixedCount} paid`}
+            align="center"
+            tone={stats.fixedPaid === stats.fixedCount ? "ok" : undefined}
+          />
+          <Mini
+            label="To review"
+            value={String(stats.toReview)}
+            align="right"
+            tone={stats.toReview > 0 ? "watch" : "ok"}
           />
         </div>
       </div>
     </section>
+  );
+}
+
+/** One link in the income chain: a caption over a figure. */
+function ChainLink({
+  label,
+  value,
+  strong = false,
+  children,
+}: {
+  label: string;
+  value: number;
+  strong?: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="overline !text-[9.5px]">{label}</div>
+      <div className="mt-1.5 flex items-center gap-2">
+        {/* Proportional figures: tabular widths make a standalone number look
+            loose at this size (dataviz: figures). */}
+        <span
+          className={`text-[21px] font-semibold leading-none tracking-tight ${
+            strong ? "text-ink" : "text-ink-secondary"
+          }`}
+        >
+          {formatCentsWhole(value)}
+        </span>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** One share of the joint account: swatch and label, figure, note. */
+function Share({
+  swatch,
+  label,
+  value,
+  note,
+  align = "left",
+  over = false,
+}: {
+  swatch: string;
+  label: string;
+  value: number;
+  note?: React.ReactNode;
+  align?: "left" | "center" | "right";
+  over?: boolean;
+}) {
+  const box = align === "right" ? "text-right" : align === "center" ? "text-center" : "";
+  const row = align === "right" ? "justify-end" : align === "center" ? "justify-center" : "";
+  return (
+    <div className={box}>
+      <div className={`flex items-center gap-2 ${row}`}>
+        <span className={`inline-block h-[10px] w-[10px] shrink-0 rounded-[3px] ${swatch}`} />
+        <span className="text-[12px] font-semibold text-ink-secondary">{label}</span>
+      </div>
+      <div
+        className={`mt-2 text-[26px] font-semibold leading-none tracking-tight ${
+          over ? "status-over" : "text-ink"
+        }`}
+      >
+        {formatCentsWhole(value)}
+      </div>
+      {note && <div className="mt-1.5 text-[11.5px] leading-snug text-ink-muted">{note}</div>}
+    </div>
+  );
+}
+
+/** The smaller readings under the rule: same contract, quieter. */
+function Mini({
+  label,
+  value,
+  align = "left",
+  tone,
+}: {
+  label: string;
+  value: string;
+  align?: "left" | "center" | "right";
+  tone?: "ok" | "watch" | "over";
+}) {
+  const box = align === "right" ? "text-right" : align === "center" ? "text-center" : "";
+  return (
+    <div className={box}>
+      <div className="overline !text-[9.5px]">{label}</div>
+      <div className={`mt-1.5 text-[16px] font-semibold ${tone ? `status-${tone}` : "text-ink"}`}>
+        {value}
+      </div>
+    </div>
   );
 }
 
@@ -293,54 +430,6 @@ function Arrow() {
   );
 }
 
-
-/** One share of the joint account: swatch, name, figure. */
-function Share({
-  swatch,
-  label,
-  value,
-  emoji,
-  note,
-  align = "left",
-  tone,
-}: {
-  swatch: string;
-  label: string;
-  value: number;
-  emoji?: string;
-  note?: string;
-  align?: "left" | "center" | "right";
-  tone?: "over";
-}) {
-  const box = align === "right" ? "text-right" : align === "center" ? "text-center" : "";
-  const row =
-    align === "right" ? "justify-end" : align === "center" ? "justify-center" : "";
-  return (
-    <div className={box}>
-      <div className={`flex items-center gap-2 ${row}`}>
-        <span className={`inline-block h-[10px] w-[10px] shrink-0 rounded-[3px] ${swatch}`} />
-        <span className="text-[12px] font-semibold text-ink-secondary">
-          {emoji && (
-            <span aria-hidden className="mr-1">
-              {emoji}
-            </span>
-          )}
-          {label}
-        </span>
-      </div>
-      <div
-        // Plain ink even when it is large: the caption below carries the
-        // caveat that some of it is already promised to bills.
-        className={`money mt-1.5 text-[24px] font-semibold leading-none ${
-          tone === "over" ? "status-over" : "text-ink"
-        }`}
-      >
-        {formatCentsWhole(value)}
-      </div>
-      {note && <div className="mt-1 text-[11.5px] text-ink-muted">{note}</div>}
-    </div>
-  );
-}
 
 /** Extra money that landed this month — the one thing that makes the tank wider. */
 function AddIncome({

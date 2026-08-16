@@ -10,6 +10,8 @@ export interface FixedItemDto {
   isPaid: boolean;
   /** Statement spend filed against this line, when any was imported. */
   spent: number;
+  /** Rows on this line still waiting to be confirmed — they count as to-review. */
+  unconfirmedCount: number;
 }
 
 /**

@@ -131,6 +131,7 @@ export default async function Dashboard({
             amount: f.amount,
             isPaid: f.isPaid,
             spent: f.spent,
+            unconfirmedCount: f.transactions.filter((t) => !t.isConfirmed).length,
           })),
           uncategorizedSpent: s.uncategorized.reduce((sum, t) => sum + t.amount, 0),
         }}
