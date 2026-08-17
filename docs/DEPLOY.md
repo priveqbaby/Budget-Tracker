@@ -14,8 +14,10 @@ deployed site, the variables did not reach the running process.
 
 1. Create a project at [supabase.com](https://supabase.com) — the free tier is
    more than enough for two people and three cards.
-2. Open **SQL Editor** and run the four migrations **in order**, one at a time,
-   checking each succeeds before the next:
+2. Open **SQL Editor → New query**. For each of the four files below, in order:
+   open the file in this repo (or on GitHub), select all its text, copy it, and
+   paste that text — not the file path — into the query editor. Then click
+   **Run** and confirm it says success before moving to the next file.
 
    ```
    supabase/migrations/0001_init.sql
@@ -23,6 +25,11 @@ deployed site, the variables did not reach the running process.
    supabase/migrations/0003_v3.sql
    supabase/migrations/0004_gross_income.sql
    ```
+
+   Pasting the path itself (e.g. typing `supabase/migrations/0001_init.sql` into
+   the editor) fails with `syntax error at or near "supabase"` — the editor runs
+   SQL text, not a file reference. You want the file's *contents* in there, which
+   for 0001 is ~270 lines starting with `create table households (`.
 
    0001 creates the tables, the `is_household_member(hid)` security-definer
    function and every RLS policy. The rest add columns and extend the bootstrap
