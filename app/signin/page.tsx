@@ -17,9 +17,9 @@ export default async function SigninPage({
         <p className="mt-1.5 text-[13.5px] text-ink-secondary">
           Every card, one budget. Sign in with a magic link — no passwords anywhere.
         </p>
-        {error === "link" && (
+        {error && (
           <p className="chip chip-over mt-4 w-full justify-center" role="alert">
-            That link expired or was already used. Send a fresh one.
+            {SIGNIN_ERRORS[error] ?? SIGNIN_ERRORS.link}
           </p>
         )}
         <SigninForm />
@@ -27,3 +27,13 @@ export default async function SigninPage({
     </div>
   );
 }
+
+/** Why the callback bounced back here. "browser" is the common one: the link
+ *  was opened somewhere other than the browser that requested it, so the PKCE
+ *  verifier cookie was missing — the link itself was perfectly good. */
+const SIGNIN_ERRORS: Record<string, string> = {
+  link: "That sign-in link didn't work. Send a fresh one.",
+  expired: "That link expired or was already used. Send a fresh one.",
+  browser:
+    "Open the link in this same browser — the one you asked for it from. Send a fresh one and click it here.",
+};
