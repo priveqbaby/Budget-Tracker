@@ -11,6 +11,11 @@ import { addSource } from "@/app/auth/actions";
 import type { ColumnMapping, SignConvention } from "@/lib/import/types";
 import { formatCents, dayLabel } from "@/lib/money";
 
+/** "1 row" / "2 rows" — the review chips read as counts, so they have to agree. */
+function plural(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? "" : "s"}`;
+}
+
 interface SourceDto {
   id: string;
   label: string;
@@ -466,7 +471,7 @@ function ReviewStep({
   return (
     <div>
       <div className="flex flex-wrap gap-2">
-        <span className="chip chip-neutral">{preview.rows.length} new transactions</span>
+        <span className="chip chip-neutral">{plural(preview.rows.length, "new transaction")}</span>
         {preview.skippedAsDuplicates > 0 && (
           <span className="chip chip-neutral" title="Count-aware: same-day duplicates are kept, re-uploads are not">
             {preview.skippedAsDuplicates} already imported — skipped
@@ -474,10 +479,14 @@ function ReviewStep({
         )}
         {ruleRows.length > 0 && <span className="chip chip-ok">{ruleRows.length} matched your rules</span>}
         {paymentRows.length > 0 && (
-          <span className="chip chip-neutral">{paymentRows.length} card payment excluded</span>
+          <span className="chip chip-neutral">
+            {plural(paymentRows.length, "card payment")} excluded
+          </span>
         )}
         {preview.issues.length > 0 && (
-          <span className="chip chip-watch">{preview.issues.length} rows couldn’t be read</span>
+          <span className="chip chip-watch">
+            {plural(preview.issues.length, "row")} couldn’t be read
+          </span>
         )}
       </div>
 

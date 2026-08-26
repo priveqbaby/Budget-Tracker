@@ -191,6 +191,10 @@ export class DemoStore implements DataStore {
 
   async createInvite(email: string): Promise<Invite> {
     const d = db();
+    // Matches the live store: re-inviting the same address is a no-op, not a
+    // second row. Live enforces it with unique (household_id, email).
+    const existing = d.invites.find((i) => i.email === email && !i.acceptedAt);
+    if (existing) return existing;
     const invite: Invite = { id: `inv-${++d.counter}`, email, role: "member", acceptedAt: null };
     d.invites.push(invite);
     return invite;

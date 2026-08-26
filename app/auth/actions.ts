@@ -47,9 +47,20 @@ export async function createHousehold(householdName: string, displayName: string
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/signin");
 
+  // Nothing about the RPC is idempotent — a double-clicked Create button would
+  // build a second household and leave the user a member of both, with
+  // getSupabaseStore free to pick either one on any given request.
+  const { data: existing } = await supabase
+    .from("household_members")
+    .select("household_id")
+    .eq("user_id", auth.user.id)
+    .limit(1)
+    .maybeSingle();
+  if (existing) redirect("/");
+
   const { error } = await supabase.rpc("create_household_with_categories", {
-    p_name: householdName,
-    p_display_name: displayName,
+    p_name: householdName.trim() || "Our household",
+    p_display_name: displayName.trim() || (auth.user.email ?? "Member").split("@")[0],
     p_categories: DEFAULT_CATEGORIES,
   });
   if (error) throw error;
@@ -64,20 +75,30 @@ export async function acceptInvite(inviteId: string, displayName: string) {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) redirect("/signin");
 
+  // maybeSingle, not single: an invite that was already consumed — a double
+  // click, a stale tab, a back button — is a no-op to be absorbed, not a 500.
   const { data: invite, error } = await supabase
     .from("invites")
     .select("household_id, role")
     .eq("id", inviteId)
     .is("accepted_at", null)
-    .single();
+    .maybeSingle();
   if (error) throw error;
+  if (!invite) redirect("/");
 
-  const { error: memberError } = await supabase.from("household_members").insert({
-    household_id: invite.household_id,
-    user_id: auth.user.id,
-    display_name: displayName,
-    role: invite.role,
-  });
+  // The insert races itself when the Join button is double clicked, and
+  // (household_id, user_id) is the primary key — so upsert and let the second
+  // one land on the first instead of raising a duplicate-key error.
+  const name = displayName.trim() || (auth.user.email ?? "Member").split("@")[0];
+  const { error: memberError } = await supabase.from("household_members").upsert(
+    {
+      household_id: invite.household_id,
+      user_id: auth.user.id,
+      display_name: name,
+      role: invite.role,
+    },
+    { onConflict: "household_id,user_id" },
+  );
   if (memberError) throw memberError;
 
   const { error: acceptError } = await supabase

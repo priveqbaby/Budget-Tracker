@@ -6,6 +6,7 @@ import { buildImportPreview, guessMapping } from "@/lib/import/engine";
 import { classifyMerchants } from "@/lib/import/categorize";
 import type { ColumnMapping } from "@/lib/import/types";
 import type { CommitRow, IncomeEntry, SourceKind } from "@/lib/data/types";
+import { normalizeInviteEmail } from "@/lib/invite";
 import Papa from "papaparse";
 
 export async function toggleFixedPaid(categoryId: string, month: string, isPaid: boolean) {
@@ -186,10 +187,23 @@ export async function updateCategoryCap(categoryId: string, capCents: number) {
   revalidatePath("/settings");
 }
 
-export async function sendInvite(email: string) {
+export async function sendInvite(email: string): Promise<{ ok: boolean; message: string }> {
+  const normalized = normalizeInviteEmail(email);
+  if (!normalized) {
+    return { ok: false, message: "That doesn't look like an email address." };
+  }
+
+  // Someone who is already a member never reaches /welcome, so a stray invite
+  // addressed to them is inert — not worth storing an email per member to catch.
   const store = await getStore();
-  await store.createInvite(email);
+  try {
+    await store.createInvite(normalized);
+  } catch (e) {
+    console.error("[sendInvite] failed", e);
+    return { ok: false, message: "Could not send that invite. Try again." };
+  }
   revalidatePath("/settings");
+  return { ok: true, message: "Invited" };
 }
 
 export interface MappingProbe {

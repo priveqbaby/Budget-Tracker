@@ -248,12 +248,18 @@ export class SupabaseStore implements DataStore {
     // under RLS — can still see whom they're joining on /welcome.
     const { data: hh } = await this.supabase
       .from("households").select("name").eq("id", this.householdId).single();
+    // Upsert, not insert: re-inviting an address that is already pending should
+    // be a no-op the owner can repeat safely, not a unique-violation that the
+    // form has no way to explain.
     const { data, error } = await this.supabase
       .from("invites")
-      .insert({
-        ...this.hh(), email, invited_by: user.user?.id,
-        household_name: hh?.name ?? "",
-      })
+      .upsert(
+        {
+          ...this.hh(), email, invited_by: user.user?.id,
+          household_name: hh?.name ?? "",
+        },
+        { onConflict: "household_id,email" },
+      )
       .select("*").single();
     if (error) throw error;
     return { id: data.id, email: data.email, role: data.role, acceptedAt: data.accepted_at };
@@ -461,9 +467,13 @@ export async function getSupabaseStore(): Promise<DataStore> {
   const supabase = await createClient();
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) throw new NotSignedInError();
+  // Ordered so that a member of more than one household always lands in the
+  // same one; unordered limit(1) is free to answer differently per request.
   const { data: membership, error } = await supabase
     .from("household_members").select("household_id")
-    .eq("user_id", auth.user.id).limit(1).maybeSingle();
+    .eq("user_id", auth.user.id)
+    .order("household_id", { ascending: true })
+    .limit(1).maybeSingle();
   // A failed query is not "no household" — don't misroute members to onboarding.
   if (error) throw error;
   if (!membership) throw new NoHouseholdError();
