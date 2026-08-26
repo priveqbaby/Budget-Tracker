@@ -24,7 +24,20 @@ export async function sendMagicLink(email: string): Promise<{ ok: boolean; messa
     email,
     options: { emailRedirectTo: `${await requestOrigin()}/auth/callback` },
   });
-  if (error) return { ok: false, message: error.message };
+  if (error) {
+    console.error("[sendMagicLink] failed", { code: error.code, message: error.message });
+    // The built-in sender allows 2 emails an hour for the whole project, so
+    // onboarding a household walks straight into this. Say what it is and what
+    // to do, rather than passing GoTrue's "email rate limit exceeded" through.
+    if (error.code === "over_email_send_rate_limit" || /rate limit/i.test(error.message)) {
+      return {
+        ok: false,
+        message:
+          "Too many sign-in emails in the last hour — that limit is shared by everyone here. Try again a little later.",
+      };
+    }
+    return { ok: false, message: error.message };
+  }
   return { ok: true, message: "Check your inbox for the magic link." };
 }
 
