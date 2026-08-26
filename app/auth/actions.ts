@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { createMagicLinkClient } from "@/lib/supabase/magic-link";
 import { getStore, isDemoMode } from "@/lib/data";
 import { DEFAULT_CATEGORIES } from "@/lib/data/default-categories";
 import type { SourceKind } from "@/lib/data/types";
@@ -18,7 +19,7 @@ async function requestOrigin(): Promise<string> {
 
 export async function sendMagicLink(email: string): Promise<{ ok: boolean; message: string }> {
   if (isDemoMode()) return { ok: false, message: "Demo mode has no sign-in — the data is seeded." };
-  const supabase = await createClient();
+  const supabase = createMagicLinkClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
     options: { emailRedirectTo: `${await requestOrigin()}/auth/callback` },

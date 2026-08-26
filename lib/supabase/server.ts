@@ -9,15 +9,6 @@ export async function createClient(): Promise<SupabaseClient> {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      auth: {
-        // Magic links have to open anywhere — the phone, another browser, the
-        // Gmail in-app viewer. PKCE cannot do that: it needs the code-verifier
-        // cookie from the browser that requested the link, and when that cookie
-        // is missing the exchange fails on a token GoTrue already accepted.
-        // Implicit returns the session in the URL fragment, so the link carries
-        // everything it needs and no earlier cookie has to survive.
-        flowType: "implicit",
-      },
       cookies: {
         getAll: () => cookieStore.getAll(),
         setAll: (cookiesToSet) => {
